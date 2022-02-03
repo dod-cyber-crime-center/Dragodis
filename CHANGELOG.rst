@@ -2,8 +2,8 @@ Changelog
 =========
 
 
-`Unreleased`_
--------------
+`0.2.0`_ - 2022-02-03
+---------------------
 
 - Updated IDA disassembler to use `rpyc <rpyc.readthedocs.io/en/latest>`_.
 - Updated support to IDA 7.7
@@ -25,10 +25,11 @@ Changelog
     - Segments
 
 
-0.0.1 - 2020-25-11
+0.1.0 - 2020-11-25
 ------------------
 
 - Initial release
 
 
-.. _Unreleased: https://github.com/Defense-Cyber-Crime-Center/dragodis/compare/0.0.1...HEAD
+.. _Unreleased: https://github.com/Defense-Cyber-Crime-Center/dragodis/compare/0.2.0...HEAD
+.. _0.2.0: https://github.com/Defense-Cyber-Crime-Center/dragodis/compare/0.1.0...0.2.0
