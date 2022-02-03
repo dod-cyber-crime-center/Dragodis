@@ -5,3 +5,9 @@ build/
 dist/
 .tox/
 .nox/
+docs/_build
+docs/_static
+docs/_templates
+venv/
+dist/
+.vscode/

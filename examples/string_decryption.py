@@ -1,11 +1,8 @@
 # Tested with Ghidra 9.1.2 and IDA 7.4, 7.5
 
-import os
-
 import dragodis
 
 
-EXAMPLE_BINARY = os.path.join(os.path.dirname(__file__), "strings.exe")
 DECRYPT_CALLER_ADDR = 0x401030  # Address of the function that calls the decryption function on each string
 
 
@@ -14,35 +11,33 @@ def decrypt(data, key):
     return bytes(datum ^ key for datum in data)
 
 
-def process(disassembler):
-    func = disassembler.get_function_containing(DECRYPT_CALLER_ADDR)
-    func_heads = func.get_heads()
-    for head in func_heads:
-        if disassembler.get_mnemonic_at(head) == "push":
-            if disassembler.get_mnemonic_at(disassembler.next_head(head)) == "push":
-                key = disassembler.get_operand_value(head, 0)
-                enc_string_loc = disassembler.get_operand_value(disassembler.next_head(head), 0)
-                enc_data = bytearray()
+def process(dis):
+    func = dis.get_function(DECRYPT_CALLER_ADDR)
+    key = None
+    for insn in func.instructions():
+        if insn.mnemonic != "push":
+            key = None
+            continue
 
-                next_byte = disassembler.get_byte(enc_string_loc)
-                while next_byte != 0:
-                    enc_data.append(next_byte)
-                    enc_string_loc += 1
-                    next_byte = disassembler.get_byte(enc_string_loc)
-                enc_data = bytes(enc_data)
+        if not key:
+            key = insn.operands[0].value
+            continue
 
-                print(f"key: {hex(key)}, encrypted data: {enc_data}")
-                print(f"decrypted string: {decrypt(enc_data, key).decode('utf-8')}")
+        enc_string_addr = insn.operands[0].value
+        print(hex(insn.address), hex(enc_string_addr))
+        enc_string = dis.get_string_bytes(enc_string_addr, bit_width=8)
+        if enc_string is None or key is None:
+            print(repr(enc_string), repr(key))
+        dec_string = decrypt(enc_string, key).decode("utf-8")
+
+        print(f"key: {hex(key)}, encrypted data: {repr(enc_string)}")
+        print(f"decrypted string: {dec_string}")
+        key = None  # clear for next round.
 
 
-# # Run disassembler commands with IDA
-# with dragodis.IDA(EXAMPLE_BINARY) as disassembler:
-#     print("Start of IDA results")
-#     process(disassembler)
-#     print("End of IDA results")
-
-# Run disassembler commands with Ghidra
-with dragodis.Ghidra(EXAMPLE_BINARY) as disassembler:
-    print("Start of Ghidra results")
-    process(disassembler)
-    print("End of Ghidra results")
+if __name__ == "__main__":
+    # Run script with whichever disassembler user has set up.
+    with dragodis.open_program("strings.exe") as dis:
+        print(f"Start of {dis.name}")
+        process(dis)
+        print(f"End of {dis.name} results")
