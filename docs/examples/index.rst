@@ -8,6 +8,7 @@ Examples
     lines
     memory
     operands
+    registers
     references
     flowcharts
     structures

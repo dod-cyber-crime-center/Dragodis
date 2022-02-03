@@ -18,7 +18,7 @@ IDA
 ***
 
    #. Download and install `IDA Pro 7.* <https://www.hex-rays.com>`_ with Python 3 mode.
-      (Tested on version 7.4 and 7.5) Make sure to run IDA at least once to accept the EULA.
+      (Tested on version 7.4, 7.5, and 7.7) Make sure to run IDA at least once to accept the EULA.
 
    #. Set the ``IDA_INSTALL_DIR`` environment variable to point to the directory where IDA is installed.
       (e.g. ``C:\Program Files\IDA Pro 7.5``)
