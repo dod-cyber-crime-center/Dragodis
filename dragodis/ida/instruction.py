@@ -9,6 +9,7 @@ from dragodis.interface.instruction import (
     Instruction, x86Instruction, ARMInstruction, ARMConditionCode
 )
 from dragodis.utils import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     from dragodis.ida.flat import IDA

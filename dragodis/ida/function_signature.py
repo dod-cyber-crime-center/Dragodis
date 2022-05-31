@@ -13,6 +13,7 @@ from dragodis.ida.operand import IDAOperand
 from dragodis.interface.function_signature import FunctionSignature, FunctionParameter
 from dragodis.exceptions import NotExistError
 from dragodis.utils import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     import ida_typeinf

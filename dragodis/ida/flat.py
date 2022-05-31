@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 from functools import cached_property, lru_cache
+
+from .. import utils
+
+cached_property = property  # FIXME: cached property disabled for now.
 from typing import Iterable, Union
 
 from dragodis.interface.flat import FlatAPI
 from dragodis.exceptions import NotExistError
 from .data_type import IDADataType
-from .disassembler import IDADisassembler
+from .disassembler import IDADisassembler, IDARemoteDisassembler, IDALocalDisassembler
 from .function_signature import IDAFunctionSignature
 from .line import IDALine
 from .memory import IDAMemory, CachedMemory
@@ -94,6 +98,26 @@ class IDA(FlatAPI, IDADisassembler):
         # if default:
         #     default = bytes([default])
         # return self._cached_memory.get(addr, length, fill_pattern=default)
+
+    def find_bytes(self, pattern: bytes, start: int = None, reverse=False) -> int:
+        # Convert bytes pattern into hex separated by space format that IDA likes.
+        pattern = " ".join(format(byte, "02X") for byte in pattern)
+        if reverse:
+            flag = self._ida_search.SEARCH_UP
+            if start is None:
+                start = self.max_address
+            end = self.min_address
+        else:
+            flag = self._ida_search.SEARCH_DOWN
+            if start is None:
+                start = self.min_address
+            end = self.max_address
+
+        found = self._ida_search.find_binary(start, end, pattern, 16, flag)
+        if found == self._BADADDR:
+            return -1
+        else:
+            return found
 
     def get_word(self, addr: int) -> int:
         if not self._bytes_loaded(addr, 2):
@@ -258,3 +282,11 @@ class IDA(FlatAPI, IDADisassembler):
             name = ida_entry.get_entry_name(ordinal)
             yield IDAExport(address, name)
 
+
+# Set proper Disassembler class based on whether we are inside or outside IDA.
+if utils.in_ida():
+    class IDA(IDA, IDALocalDisassembler):
+        ...
+else:
+    class IDA(IDA, IDARemoteDisassembler):
+        ...

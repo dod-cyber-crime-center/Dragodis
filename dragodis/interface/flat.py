@@ -145,6 +145,20 @@ class FlatAPI(metaclass=abc.ABCMeta):
         :raises NotExistError: If bytes within the given range does not exist.
         """
 
+    @abc.abstractmethod
+    def find_bytes(self, pattern: bytes, start: int = None, reverse: bool = False) -> int:
+        """
+        Search to find bytes for given pattern.
+
+        NOTE: This just preforms simple byte matching. For something more complex
+            like wild cards, I recommend using rugosa.re
+
+        :param pattern: Bytes we are looking for
+        :param start: Address to start the search (defaults to min or max address)
+        :param reverse: Whether to search upwards instead of downwards.
+        :return: The start address for the first found instance of given bytes or -1 if not found.
+        """
+
     def get_word(self, addr: int) -> int:
         """
         Returns the two byte value at ``addr``.
@@ -461,6 +475,16 @@ class FlatAPI(metaclass=abc.ABCMeta):
                     break
                 yield line
                 line = line.next
+
+    def instructions(self, start: int = None, end: int = None, reverse=False) -> Iterable[Instruction]:
+        """
+        Iterates the Instruction objects found with the given range of addresses.
+        If addresses are not found, the address among the full program is iterated.
+        """
+        for line in self.lines(start=start, end=end, reverse=reverse):
+            insn = line.instruction
+            if insn:
+                yield insn
 
     @property
     @abc.abstractmethod

@@ -23,7 +23,11 @@ class IDAGlobalVariable(GlobalVariable):
 
     @property
     def name(self) -> str:
-        return self._ida._idc.get_name(self._address)
+        return self._ida.get_name(self._address)
+
+    @name.setter
+    def name(self, new_name: str):
+        self._ida.set_name(self._address, new_name)
 
     @property
     def size(self) -> int:

@@ -83,3 +83,21 @@ which disassembler they would like to use.
     with dragodis.open_program(r"C:\strings.exe") as dis:
         print(f"Disassembler used: {dis.name}")
         print(dis.get_dword(0x401000))
+
+
+If you are locally within the disassembler's interpreter (the output window for IDA or pyhidraw interpreter in Ghidra)
+then you can initialize a disassembler object by directly acccessing the object:
+
+.. code-block:: python
+
+    # If in IDA
+    import dragodis
+    dis = dragodis.IDA()
+
+    # If in Ghidra
+    import dragodis
+    dis = dragodis.Ghidra()
+
+
+We can also directly call scripts that using the ``open_program()`` function locally in the disassembler.
+When this happens, the input file path provided must match the detected input file path by the disassembler.

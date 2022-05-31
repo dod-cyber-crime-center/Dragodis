@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 
 from typing import Tuple, TYPE_CHECKING
 

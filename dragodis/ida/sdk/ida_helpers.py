@@ -345,5 +345,6 @@ def decompiled_code(address: int, _visited=None) -> Optional[ida_hexrays.cfuncpt
             if decompiled_code(_visited=_visited) is not None:
                 return decompiled_code(address, visited=_visited)
 
-    logger.warning(f"Unable to decompile function at {hex(address)}: {fail_obj.code}")
+    # TODO: Observed this message pops up with fail_obj.code == 0... unsure if that is actually an error.
+    logger.debug(f"Unable to decompile function at {hex(address)}: {fail_obj.code}")
     return None

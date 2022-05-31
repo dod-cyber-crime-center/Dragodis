@@ -26,6 +26,8 @@ setup(
         "rpyc",
         "pyhidra",
         "pywin32; platform_system == 'Windows'",
+        "pefile",
+        "pyelftools",
     ],
     extras_require={
         "testing": [

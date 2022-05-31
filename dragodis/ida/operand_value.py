@@ -8,6 +8,7 @@ from dragodis.interface.operand_value import (
     RegisterList, Phrase,
 )
 from dragodis.utils import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     import ida_ua

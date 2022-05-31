@@ -1,7 +1,8 @@
 
 from __future__ import annotations
 
-from functools import cached_property
+# from functools import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 from typing import TYPE_CHECKING
 
 from dragodis.interface.data_type import DataType

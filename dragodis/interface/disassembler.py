@@ -2,7 +2,7 @@
 import abc
 import os
 import pathlib
-from typing import Union
+from typing import Union, Callable
 
 
 class BackendDisassembler(metaclass=abc.ABCMeta):
@@ -30,7 +30,7 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         :param str input_path: The path of the file to process
         :raises NotInstalledError: If the disassembler was not installed on the system.
         """
-        self.input_path = pathlib.Path(input_path)
+        self.input_path = pathlib.Path(input_path).resolve()
 
     def __enter__(self):
         """
@@ -47,7 +47,6 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         """
         self.stop(*(exc_type, exc_value, exc_traceback))
 
-    @abc.abstractmethod
     def start(self):
         """
         Setup method.
@@ -59,7 +58,6 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         """
         pass
 
-    @abc.abstractmethod
     def stop(self, *exc_info):
         """
         Teardown method.
@@ -71,6 +69,22 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         """
         pass
 
+    def teleport(self, func: Callable) -> Callable:
+        """
+        Teleports function into the underlying disassembler to do disassembler specific things.
+        NOTE: This function only applies for certain disassemblers. For others, this does nothing
+        but pass back the same function.
 
+        e.g.
+            def my_func(addr):
+                import ida_funcs
+                func = ida_funcs.get_func(addr)
+                return func.start_ea
 
+            if dis.name == "IDA":
+                start_addr = dis.teleport(my_func)(0x123)
 
+        :param func: Callback function to run in underlying disassembler.
+        :return: A new function which when called will be run in the underlying disassembler.
+        """
+        return func

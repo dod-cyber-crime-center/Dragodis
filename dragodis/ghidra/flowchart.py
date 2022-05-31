@@ -31,7 +31,11 @@ class GhidraBasicBlock(BasicBlock):
         return self._block.getNumAddresses()
 
     def __contains__(self, addr: int) -> bool:
-        return self._block.contains(self._ghidra._flatapi.toAddr(addr))
+        try:
+            addr = self._ghidra._to_addr(addr)
+        except NotExistError:
+            return False
+        return self._block.contains(addr)
 
     @property
     def start(self) -> int:
@@ -89,7 +93,7 @@ class GhidraFlowchart(Flowchart):
         :raises NotExistError: If block doesn't exist with in the flowchart for the given address.
         """
         block = self._ghidra._basic_block_model.getFirstCodeBlockContaining(
-            self._ghidra._flatapi.toAddr(addr), self._ghidra._monitor
+            self._ghidra._to_addr(addr), self._ghidra._monitor
         )
         if block:
             return GhidraBasicBlock(self._ghidra, block)

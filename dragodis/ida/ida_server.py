@@ -5,7 +5,8 @@ This was done so we can properly control the shutdown of IDA after the server ex
 import sys
 
 import rpyc
-from rpyc.core.stream import NamedPipeStream, SocketStream
+from rpyc import SlaveService, OneShotServer
+from rpyc.core.stream import NamedPipeStream
 
 
 def main():
@@ -24,13 +25,12 @@ def main():
     if sys.platform == "win32":
         pipe_name = idc.ARGV[1]
         stream = NamedPipeStream.create_server(pipe_name)
-    else:
-        socket_path = idc.ARGV[1]
-        stream = SocketStream.unix_connect(socket_path)
-
-    with stream:
         with rpyc.classic.connect_stream(stream) as srv:
             srv.serve_all()
+    else:
+        socket_path = idc.ARGV[1]
+        server = OneShotServer(SlaveService, socket_path=socket_path, auto_register=False)
+        server.start()
 
     idc.qexit(0)
 

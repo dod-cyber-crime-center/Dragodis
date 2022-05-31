@@ -82,7 +82,7 @@ class IDAOperand(Operand):
 
         # Architecture specific operands types like phrase should be handled by the
         # appropriate subclass.
-        raise ValueError(f"Invalid operand type: {operand_type!r}")
+        raise ValueError(f"Invalid operand type: {operand_type!r} @ {hex(self.address)}:{self.index}")
 
     @cached_property
     def width(self) -> int:

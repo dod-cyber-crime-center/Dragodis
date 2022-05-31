@@ -306,6 +306,15 @@ def test_get_bytes(disassembler):
     assert disassembler.get_bytes(0x40c000, 2) == b"Id"
 
 
+def test_find_bytes(disassembler):
+    assert disassembler.find_bytes(b"\x83\xC4\x08\x33\xC0") == 0x401299
+    assert disassembler.find_bytes(b"\xDE\xAD\xBE\xEF") == -1
+    assert disassembler.find_bytes(b"\x83\xC4\x08\x33\xC0", start=disassembler.min_address) == 0x401299
+    assert disassembler.find_bytes(b"\x83\xC4\x08\x33\xC0", start=0x4015A6) == -1
+    assert disassembler.find_bytes(b"\x83\xC4\x08\x33\xC0", start=0x4015A6, reverse=True) == 0x401299
+    assert disassembler.find_bytes(b"\x83\xC4\x08\x33\xC0", reverse=True) == 0x401299
+
+
 # TODO: currently disabled.
 # def test_get_string_bytes(disassembler):
 #     # Code section

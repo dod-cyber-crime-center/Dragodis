@@ -8,6 +8,7 @@ from dragodis.ida.line import IDALine
 from dragodis.ida.memory import IDAMemory
 from dragodis.interface import Segment, SegmentType, SegmentPermission
 from dragodis.utils import cached_property
+cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     import ida_segment

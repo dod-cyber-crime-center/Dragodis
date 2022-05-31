@@ -11,7 +11,7 @@ from dragodis.interface.types import ReferenceType
 if TYPE_CHECKING:
     from dragodis.interface import Reference, Instruction, Flowchart, FlatAPI
 
-from dragodis.interface.line import CommentType
+from dragodis.interface.line import CommentType, Line
 
 
 class Function(metaclass=abc.ABCMeta):
@@ -76,24 +76,27 @@ class Function(metaclass=abc.ABCMeta):
         :returns: String containing comment or None if there is no comment.
         """
 
-    # TODO: Update this to use flowchart to iterate instructions.
+    def lines(self, start: int = None, end: int = None, reverse=False) -> Iterable[Line]:
+        """
+        Iterates the line items in the function.
+
+        NOTE: This is BFS using the flowchart.
+        If you need something simpler you can use .lines() directly:
+            lines = dis.lines(func.start, func.end)
+        """
+        for line in self.flowchart.lines(start, reverse=reverse):
+            if end and line.address == end:
+                break
+            yield line
+
     def instructions(self, start: int = None, end: int = None, reverse=False) -> Iterable[Instruction]:
         """
         Iterates the instructions in the function.
-
-        This method is approximately equivalent to
-        ``Disassembler.get_heads(self.start_addr, self.end_addr)``.
-
-        See :meth:`.Disassembler.get_heads` for more information.
-
-        :return: List of address heads contained in the function
         """
-        if start is None:
-            start = self.start if not reverse else self.end
-        if end is None:
-            end = self.end if not reverse else self.start
-        for line in self._api.lines(start=start, end=end, reverse=reverse):
-            yield line.instruction
+        for line in self.lines(start=start, end=end, reverse=reverse):
+            insn = line.instruction
+            if insn:
+                yield insn
 
     @property
     @abc.abstractmethod

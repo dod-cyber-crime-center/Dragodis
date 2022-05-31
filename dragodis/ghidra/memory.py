@@ -27,7 +27,7 @@ class GhidraMemory(Memory):
         if not size:
             return b""
 
-        address = self._ghidra._flatapi.toAddr(self.start + self._offset)
+        address = self._ghidra._to_addr(self.start + self._offset)
         buffer = JByte[size]
         num_bytes = self._memory.getBytes(address, buffer)
         self._offset += num_bytes
@@ -42,7 +42,7 @@ class GhidraMemory(Memory):
             return 0
 
         # Obtain original bytes directly from underlying file.
-        address = self._ghidra._flatapi.toAddr(self.start + self._offset)
+        address = self._ghidra._to_addr(self.start + self._offset)
         memory_block = self._memory.getBlock(address)
         memory_info = memory_block.getSourceInfos()[0]
         file_bytes = self._memory.getAllFileBytes()[0]
@@ -61,7 +61,7 @@ class GhidraMemory(Memory):
         from ghidra.program.model.mem import MemoryAccessException
         # Trim given data to ensure we only write within the window.
         data = data[:self.end - (self.start + self._offset)]
-        address = self._ghidra._flatapi.toAddr(self.start + self._offset)
+        address = self._ghidra._to_addr(self.start + self._offset)
         try:
             self._memory.setBytes(address, data)
         except MemoryAccessException as e:
