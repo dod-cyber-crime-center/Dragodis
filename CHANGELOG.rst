@@ -2,7 +2,7 @@
 Changelog
 =========
 
-`Unreleased`_
+`0.3.0`_ - 2022-06-01
 --------------
 
 - Fixed connection issues with running IDA disassembler in Linux.
@@ -44,5 +44,6 @@ Changelog
 - Initial release
 
 
-.. _Unreleased: https://github.com/Defense-Cyber-Crime-Center/dragodis/compare/0.2.0...HEAD
-.. _0.2.0: https://github.com/Defense-Cyber-Crime-Center/dragodis/compare/0.1.0...0.2.0
+.. _Unreleased: https://github.com/dod-cyber-crime-center/dragodis/compare/0.3.0...HEAD
+.. _0.3.0: https://github.com/dod-cyber-crime-center/dragodis/compare/0.2.0...0.3.0
+.. _0.2.0: https://github.com/dod-cyber-crime-center/dragodis/compare/0.1.0...0.2.0

@@ -24,7 +24,7 @@ setup(
         "bytesparse",
         "capstone",
         "rpyc",
-        "pyhidra",
+        "pyhidra>=0.1.4",
         "pywin32; platform_system == 'Windows'",
         "pefile",
         "pyelftools",
