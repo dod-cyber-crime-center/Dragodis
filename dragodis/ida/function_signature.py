@@ -46,7 +46,7 @@ class IDAFunctionSignature(FunctionSignature):
         demangled_name = idc.demangle_name(func_name, idc.get_inf_attr(idc.INF_SHORT_DN))
         if demangled_name:
             # Strip off the extra junk: 'operator new(uint)' -> 'new'
-            match = re.search("([^ :]*)\(", demangled_name)
+            match = re.search(r"([^ :]*)\(", demangled_name)
             if not match:
                 logger.debug(f"Unable to demangle function name: {demangled_name}")
             else:
@@ -62,7 +62,7 @@ class IDAFunctionSignature(FunctionSignature):
         # If function doesn't have a name (usually because the function was dynamically created
         # within a register), then we are just going to call it "no_name" so we can still get the
         # function typing to still work.
-        return re.sub('\(', f' {self.name or "no_name"}(', f'{str(self._tif)};')
+        return re.sub(r'\(', f' {self.name or "no_name"}(', f'{str(self._tif)};')
 
     @property
     def parameters(self) -> List[IDAFunctionParameter]:
@@ -100,7 +100,7 @@ class IDAFunctionSignature(FunctionSignature):
         # Since IDA doesn't give us names, we are just going to name the arguments ourselves
         # as "a1" where 1 is the index of the parameter.
         parameters = [f"{data_type} a{i}" for i, data_type in enumerate(data_types, start=1)]
-        declaration = re.sub("\(.*\)", f"({','.join(parameters)})", self.declaration)
+        declaration = re.sub(r"\(.*\)", f"({','.join(parameters)})", self.declaration)
 
         ida_typeinf = self._ida._ida_typeinf
         tif = ida_typeinf.tinfo_t()

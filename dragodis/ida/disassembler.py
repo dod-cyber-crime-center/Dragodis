@@ -213,7 +213,7 @@ class IDARemoteDisassembler(IDADisassembler):
                 is_64_bit = utils.is_64_bit(input_path)
 
         # Find ida executable within ida_dir.
-        ida_exe_re = re.compile("idaq?64(\.exe)?$" if is_64_bit else "idaq?(\.exe)?$")
+        ida_exe_re = re.compile(r"idaq?64(\.exe)?$" if is_64_bit else r"idaq?(\.exe)?$")
         for filename in os.listdir(self._ida_path):
             if ida_exe_re.match(filename):
                 self._ida_exe = os.path.abspath(os.path.join(self._ida_path, filename))
