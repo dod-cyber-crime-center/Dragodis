@@ -3,8 +3,9 @@ Changelog
 =========
 
 
-`Unreleased`_
--------------
+`0.4.0`_ - 2022-06-28
+---------------------
+
 - Added ``Symbol.references_to`` to get references to imports or exports.
 - Added ``Disassembler.get_import()`` and ``Disassembler.get_export()`` functions.
 - Added ``BACKEND_GHIDRA`` and ``BACKEND_IDA`` constants.
@@ -12,7 +13,7 @@ Changelog
 
 
 `0.3.0`_ - 2022-06-01
---------------
+---------------------
 
 - Fixed connection issues with running IDA disassembler in Linux.
 - Add auto detection of 64bit size for IDA.
@@ -53,6 +54,7 @@ Changelog
 - Initial release
 
 
-.. _Unreleased: https://github.com/dod-cyber-crime-center/dragodis/compare/0.3.0...HEAD
+.. _Unreleased: https://github.com/dod-cyber-crime-center/dragodis/compare/0.4.0...HEAD
+.. _0.4.0: https://github.com/dod-cyber-crime-center/dragodis/compare/0.3.0...0.4.0
 .. _0.3.0: https://github.com/dod-cyber-crime-center/dragodis/compare/0.2.0...0.3.0
 .. _0.2.0: https://github.com/dod-cyber-crime-center/dragodis/compare/0.1.0...0.2.0
