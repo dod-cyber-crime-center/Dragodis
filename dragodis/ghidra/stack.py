@@ -27,7 +27,8 @@ class GhidraStackFrame(StackFrame):
             offset = name_or_offset
             # Casting int to ensure we don't pass in a JLong
             var = self._frame.getVariableContaining(int(offset))
-            return GhidraStackVariable(self._ghidra, var)
+            if var is not None:
+                return GhidraStackVariable(self._ghidra, var)
         elif isinstance(name_or_offset, str):
             name = name_or_offset
             for variable in self:

@@ -18,7 +18,7 @@ class GhidraSegment(Segment):
         self._memory_block = memory_block
 
     def __contains__(self, addr: int):
-        return self._memory_block.contains(self._ghidra._flatapi.toAddr(addr))
+        return self._memory_block.contains(self._ghidra._to_addr(addr))
 
     def __len__(self):
         return self._memory_block.getSize()

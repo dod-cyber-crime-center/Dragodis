@@ -271,7 +271,7 @@ class IDA(FlatAPI, IDADisassembler):
     @property
     def imports(self) -> Iterable[IDAImport]:
         for address, name, namespace in self._ida_helpers.iter_imports():
-            yield IDAImport(address, name, namespace)
+            yield IDAImport(self, address, name, namespace)
 
     @property
     def exports(self) -> Iterable[IDAExport]:
@@ -280,7 +280,7 @@ class IDA(FlatAPI, IDADisassembler):
             ordinal = ida_entry.get_entry_ordinal(i)
             address = ida_entry.get_entry(ordinal)
             name = ida_entry.get_entry_name(ordinal)
-            yield IDAExport(address, name)
+            yield IDAExport(self, address, name)
 
 
 # Set proper Disassembler class based on whether we are inside or outside IDA.

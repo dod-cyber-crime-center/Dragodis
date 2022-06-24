@@ -92,6 +92,12 @@ class GhidraOperand(Operand):
             # e.g. [sp,#local_4]!
             if GhidraOperandType.ADDRESS in op_type and len(self._instruction.getOpObjects(self.index)) > 1:
                 return OperandType.phrase
+            # In some cases, the operand will just be reported as a register even though it should
+            # be interpreted as a dynamic register.
+            # Check this by looking for brackets in the text.
+            # e.g. the second operand should be seen as a phrase: LEA  ESP=>local_150,[ESP]
+            elif (text := self.text) and "[" in text and "]" in text:
+                return OperandType.phrase
             else:
                 return OperandType.register
 
@@ -225,13 +231,22 @@ class GhidraOperand(Operand):
             # TODO: Figure out if there is a more sane way to do this.
             text = self.text
             if "ptr" in text:
-                manager = self._ghidra._program.getDataTypeManager()
                 data_type_name = text.split()[0]
+                if data_type_name == "xmmword":  # xmmword isn't an actual data type.
+                    return 16
+                manager = self._ghidra._program.getDataTypeManager()
                 data_type = manager.getDataType(f"/{data_type_name}")
                 return data_type.getLength()
             else:
                 value = self.value
-                return value.base.bit_width // 8
+                base_reg = value.base
+                # Account for FS/GS pointers.
+                if base_reg.name == "fs":
+                    return 4
+                elif base_reg.name == "gs":
+                    return 8
+                else:
+                    return base_reg.bit_width // 8
 
         raise TypeError(f"Unable to get size for operand {self.text} with type: {op_type!r}")
 
@@ -243,7 +258,10 @@ class GhidraOperand(Operand):
                     stack_offset = ref.getStackOffset()
                     function = self._ghidra.get_function(self.address)
                     stack_frame = function.stack_frame
-                    return stack_frame[stack_offset]
+                    try:
+                        return stack_frame[stack_offset]
+                    except KeyError:
+                        continue
                 else:
                     data = self._ghidra._listing.getDataAt(ref.getToAddress())
                     if data:

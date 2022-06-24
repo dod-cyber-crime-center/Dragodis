@@ -251,14 +251,14 @@ class Ghidra(FlatAPI, GhidraDisassembler):
     @property
     def imports(self) -> Iterable[GhidraImport]:
         for symbol in self._program.getSymbolTable().getExternalSymbols():
-            yield GhidraImport(symbol)
+            yield GhidraImport(self, symbol)
 
     @property
     def exports(self) -> Iterable[GhidraExport]:
         symbol_table = self._program.getSymbolTable()
         for address in symbol_table.getExternalEntryPointIterator():
             symbol = list(symbol_table.getUserSymbols(address))[0]
-            yield GhidraExport(symbol)
+            yield GhidraExport(self, symbol)
 
     @cached_property
     def _static_functions(self) -> List["ghidra.program.database.function.FunctionDB"]:

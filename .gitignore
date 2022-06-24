@@ -11,3 +11,5 @@ docs/_templates
 venv/
 dist/
 .vscode/
+*.idb
+Pipfile

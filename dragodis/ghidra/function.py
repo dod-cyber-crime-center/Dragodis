@@ -22,7 +22,7 @@ class GhidraFunction(Function):
         self._function = function
 
     def __contains__(self, addr: int) -> bool:
-        return self._body.contains(self._ghidra._flatapi.toAddr(addr))
+        return self._body.contains(self._ghidra._to_addr(addr))
 
     @property
     def _body(self) -> "ghidra.program.model.address.AddressSetView":

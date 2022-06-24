@@ -623,9 +623,33 @@ class FlatAPI(metaclass=abc.ABCMeta):
         The imports within the binary.
         """
 
+    def get_import(self, name: str) -> Import:
+        """
+        Gets import symbol by name.
+        :param name: Name of import function
+        :return: Import symbol
+        :raises NotExistError: If import by the given name doesn't exist.
+        """
+        for import_ in self.imports:
+            if import_.name == name:
+                return import_
+        raise NotExistError(f"Import with name '{name}' doesn't exist.")
+
     @property
     @abc.abstractmethod
     def exports(self) -> Iterable[Export]:
         """
         The exports within the binary.
         """
+
+    def get_export(self, name: str) -> Export:
+        """
+        Gets export symbol by name.
+        :param name: Name of import function
+        :return: Export symbol
+        :raises NotExistError: If export by the given name doesn't exist.
+        """
+        for export in self.exports:
+            if export.name == name:
+                return export
+        raise NotExistError(f"Export with name '{name}' doesn't exist.")

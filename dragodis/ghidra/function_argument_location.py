@@ -27,8 +27,8 @@ class GhidraStackLocation(StackLocation, GhidraArgumentLocation):
         # ie. the return address would have been pushed in making the offset for
         # the first parameter at offset +4
         # Therefore, we will subtract the return address size if applicable.
-        stack_frame = self._function.getStackFrame()
-        return self._storage.getStackOffset() - stack_frame.getParameterOffset()
+        calling_conv = self._function.getCallingConvention()
+        return self._storage.getStackOffset() - calling_conv.getStackshift()
 
 
 class GhidraRegisterLocation(RegisterLocation, GhidraArgumentLocation):

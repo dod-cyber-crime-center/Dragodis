@@ -1,16 +1,19 @@
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Iterable
 
+from dragodis.ghidra.reference import GhidraReference
 from dragodis.interface.symbol import Symbol, Import, Export
 
 if TYPE_CHECKING:
     import ghidra
+    from dragodis import Ghidra
 
 
 class GhidraSymbol(Symbol):
 
-    def __init__(self, symbol: "ghidra.program.model.symbol.Symbol"):
+    def __init__(self, ghidra: Ghidra, symbol: "ghidra.program.model.symbol.Symbol"):
+        self._ghidra = ghidra
         self._symbol = symbol
 
     @property
@@ -20,6 +23,11 @@ class GhidraSymbol(Symbol):
     @property
     def name(self) -> str:
         return str(self._symbol.getName())
+
+    @property
+    def references_to(self) -> Iterable[GhidraReference]:
+        for ref in self._symbol.getReferences():
+            yield GhidraReference(self._ghidra, ref)
 
 
 class GhidraImport(Import, GhidraSymbol):
@@ -48,6 +56,14 @@ class GhidraImport(Import, GhidraSymbol):
         if namespace == "<EXTERNAL>":
             return None
         return namespace
+
+    @property
+    def references_to(self) -> Iterable[GhidraReference]:
+        address = self.address
+        for ref in super().references_to:
+            # Ignore self-references to thunk function.
+            if ref.from_address != address:
+                yield ref
 
 
 class GhidraExport(Export, GhidraSymbol):

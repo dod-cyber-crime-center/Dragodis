@@ -23,6 +23,7 @@ from rpyc.core.stream import NamedPipeStream, SocketStream
 from dragodis.exceptions import DragodisError, NotInstalledError
 from dragodis.interface import BackendDisassembler
 from dragodis.ida import ida_server
+from dragodis.constants import BACKEND_IDA
 from dragodis import utils
 
 # Used for typing to help Pycharm give us autocompletion.
@@ -81,7 +82,7 @@ class IDADisassembler(BackendDisassembler):
     """
     Backend IDA disassembler (interface)
     """
-    name = "IDA"
+    name = BACKEND_IDA
 
     _idaapi: idaapi
     _idc: idc

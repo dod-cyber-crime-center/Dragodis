@@ -9,6 +9,7 @@ import pyhidra
 from dragodis import utils
 from dragodis.exceptions import NotInstalledError
 from dragodis.interface import BackendDisassembler
+from dragodis.constants import BACKEND_GHIDRA
 
 # Used for typing to help Pycharm give us autocompletion.
 if TYPE_CHECKING:
@@ -18,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class GhidraDisassembler(BackendDisassembler):
+
+    name = BACKEND_GHIDRA
 
     def __init__(self, input_path):
         super().__init__(input_path)
@@ -59,9 +62,7 @@ class GhidraDisassembler(BackendDisassembler):
     # endregion
 
 
-class GhidraRemoteDisassembler(BackendDisassembler):
-
-    name = "Ghidra"
+class GhidraRemoteDisassembler(GhidraDisassembler):
 
     def __init__(self, input_path, ghidra_path=None):
         """

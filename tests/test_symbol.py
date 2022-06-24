@@ -94,6 +94,11 @@ def test_imports_x86_ghidra(disassembler):
     assert actual == expected
 
 
+def test_imports_references(disassembler):
+    imp = disassembler.get_import("LoadLibraryA")
+    assert set(ref.from_address for ref in imp.references_to) == {0x405873}
+
+
 def test_imports_arm_ida(disassembler):
     imports = list(disassembler.imports)
     assert len(imports) == 4

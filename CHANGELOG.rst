@@ -2,6 +2,15 @@
 Changelog
 =========
 
+
+`Unreleased`_
+-------------
+- Added ``Symbol.references_to`` to get references to imports or exports.
+- Added ``Disassembler.get_import()`` and ``Disassembler.get_export()`` functions.
+- Added ``BACKEND_GHIDRA`` and ``BACKEND_IDA`` constants.
+- Miscellaneous bugfixes for Ghidra support.
+
+
 `0.3.0`_ - 2022-06-01
 --------------
 

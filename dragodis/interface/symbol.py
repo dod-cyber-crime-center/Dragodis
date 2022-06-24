@@ -2,9 +2,13 @@
 Interface for symbols
 """
 
+from __future__ import annotations
 import abc
 
-from typing import Optional
+from typing import Optional, Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dragodis.interface import Reference
 
 
 class Symbol(metaclass=abc.ABCMeta):
@@ -24,6 +28,13 @@ class Symbol(metaclass=abc.ABCMeta):
     def name(self) -> str:
         """
         Name of the symbol
+        """
+
+    @property
+    @abc.abstractmethod
+    def references_to(self) -> Iterable[Reference]:
+        """
+        References to symbol
         """
 
 
