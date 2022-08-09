@@ -2,18 +2,15 @@
 from __future__ import annotations
 import logging
 import re
-from typing import TYPE_CHECKING, List, Union, Optional, Tuple
+from typing import TYPE_CHECKING, List, Union, Optional
 
 from dragodis.ida.data_type import IDADataType
 from dragodis.ida.function_argument_location import (
     IDAArgumentLocation, IDAStaticLocation, IDARegisterLocation,
     IDAStackLocation, IDARegisterPairLocation, IDARelativeRegisterLocation
 )
-from dragodis.ida.operand import IDAOperand
 from dragodis.interface.function_signature import FunctionSignature, FunctionParameter
 from dragodis.exceptions import NotExistError
-from dragodis.utils import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     import ida_typeinf
@@ -26,6 +23,21 @@ class IDAFunctionSignature(FunctionSignature):
 
     # Caches function types.
     _func_types = set()
+
+    # pulled from ida_typeinf.CM_CC_* constants
+    _cc_map = {
+        0x10: "__unknown",
+        0x20: "__voidarg",
+        0x30: "__cdecl",
+        0x40: "__ellipsis",
+        0x50: "__stdcall",
+        0x60: "__Pascal",
+        0x70: "__fastcall",
+        0x80: "__thiscall",
+        0xB0: "__golang",
+        0xF0: "__usercall",
+    }
+    _cc_map_inv = {name: opcode for opcode, name in _cc_map.items()}
 
     def __init__(self, ida: IDA, address: int):
         self._address = address
@@ -63,6 +75,40 @@ class IDAFunctionSignature(FunctionSignature):
         # within a register), then we are just going to call it "no_name" so we can still get the
         # function typing to still work.
         return re.sub(r'\(', f' {self.name or "no_name"}(', f'{str(self._tif)};')
+
+    @property
+    def calling_convention(self) -> str:
+        cc = self._func_type_data.cc & self._ida._ida_typeinf.CM_CC_MASK
+        try:
+            return self._cc_map[cc]
+        except KeyError:
+            raise RuntimeError(f"{self} has unexpected calling convention: {hex(cc)}")
+
+    @calling_convention.setter
+    def calling_convention(self, name: str):
+        if not name.startswith("__"):
+            name = f"__{name}"
+        name = name.lower()
+        try:
+            cc = self._cc_map_inv[name]
+        except KeyError:
+            raise ValueError(f"Invalid calling convention name: {name}")
+        # Set calling convention part of cm_t flags.
+        cc |= self._func_type_data.cc & (self._ida._ida_typeinf.CM_CC_MASK ^ 0xff)
+        self._func_type_data.cc = cc
+        self._apply()
+        self._parameters = None
+
+    @property
+    def return_type(self) -> IDADataType:
+        return IDADataType(self._ida, self._func_type_data.rettype)
+
+    @return_type.setter
+    def return_type(self, data_type: Union[IDADataType, str]):
+        if isinstance(data_type, str):
+            data_type = self._ida.get_data_type(data_type)
+        self._func_type_data.rettype = data_type._tinfo
+        self._apply()
 
     @property
     def parameters(self) -> List[IDAFunctionParameter]:
@@ -203,7 +249,7 @@ class IDAFunctionParameter(FunctionParameter):
         except ValueError:
             raise NotExistError(f"Parameter has been removed from function signature.")
 
-    @cached_property
+    @property
     def data_type(self) -> IDADataType:
         return IDADataType(self._ida, self._funcarg.type)
 

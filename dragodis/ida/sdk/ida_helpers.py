@@ -321,7 +321,11 @@ def decompiled_code(address: int, _visited=None) -> Optional[ida_hexrays.cfuncpt
         logger.debug("Unable to load Hexrays decompiler.")
         return None
     fail_obj = ida_hexrays.hexrays_failure_t()
-    code = ida_hexrays.decompile(address, fail_obj)
+    try:
+        code = ida_hexrays.decompile(address, fail_obj)
+    except ida_hexrays.DecompilationFailure as e:
+        logger.warning(f"Failed to decompile function: {e}")
+        return None
     if code and not fail_obj.code:
         return code
 

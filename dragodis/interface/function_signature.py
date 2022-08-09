@@ -8,11 +8,16 @@ if TYPE_CHECKING:
     from dragodis.interface.function_argument_location import ArgumentLocation
 
 
-# TODO: Add support for getting return type.
 class FunctionSignature(metaclass=abc.ABCMeta):
     """
     Interface for a function signature.
     """
+
+    def __str__(self) -> str:
+        return self.declaration
+
+    def __repr__(self) -> str:
+        return f"<FunctionSignature {self.return_type} {self.calling_convention} {self.name}({', '.join(map(repr, self.parameters))})>"
 
     @property
     @abc.abstractmethod
@@ -29,6 +34,35 @@ class FunctionSignature(metaclass=abc.ABCMeta):
         """
 
     @property
+    @abc.abstractmethod
+    def calling_convention(self) -> str:
+        """
+        The calling convention used in the function signature.
+        """
+
+    @calling_convention.setter
+    @abc.abstractmethod
+    def calling_convention(self, name: str):
+        """
+        Sets the calling convention for the function signature.
+        """
+
+    @property
+    @abc.abstractmethod
+    def return_type(self) -> DataType:
+        """
+        The return type of the function.
+        """
+
+    @return_type.setter
+    @abc.abstractmethod
+    def return_type(self, data_type: Union[DataType, str]):
+        """
+        Sets the return type of the function with given data type.
+        """
+
+    @property
+    @abc.abstractmethod
     def parameters(self) -> List[FunctionParameter]:
         """
         List of parameters in the function signature.
@@ -89,6 +123,12 @@ class FunctionParameter(metaclass=abc.ABCMeta):
 
     def __init__(self, signature: FunctionSignature):
         self.signature = signature
+
+    def __str__(self) -> str:
+        return f"{self.location}: {self.declaration}"
+
+    def __repr__(self) -> str:
+        return f"<FunctionParameter {self.ordinal}: {self}>"
 
     # TODO: Provide ability to change name?
     @property

@@ -12,6 +12,12 @@ class Reference(metaclass=abc.ABCMeta):
     References represent the references to or from any address or function found in a disassembler.
     """
 
+    def __str__(self) -> str:
+        return f"{self.type.name}: 0x{self.from_address:08x} --> 0x{self.to_address:08x}"
+
+    def __repr__(self) -> str:
+        return f"<Reference {self.type!r}: 0x{self.from_address:08x} --> 0x{self.to_address:08x}>"
+
     @property
     @abc.abstractmethod
     def from_address(self) -> int:

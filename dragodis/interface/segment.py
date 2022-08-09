@@ -15,8 +15,11 @@ class Segment(metaclass=abc.ABCMeta):
     Interface for accessing segment information. (Sometimes referred to as 'sections')
     """
 
+    def __str__(self) -> str:
+        return f"{self.name}: 0x{self.start:08x} --> 0x{self.end:08x}"
+
     def __repr__(self):
-        return f"<Segment {self.name} - 0x{self.start:08x} -> 0x{self.end:08x}>"
+        return f"<Segment {self} - permissions={self.permissions!r}, bit_size={self.bit_size}>"
 
     def __contains__(self, addr: int) -> bool:
         """

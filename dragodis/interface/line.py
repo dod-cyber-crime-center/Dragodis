@@ -23,6 +23,9 @@ class Line(metaclass=abc.ABCMeta):
         """Here for convenience"""
         return self.size
 
+    def __str__(self):
+        return f"0x{self.address:08x}: {self.value}"
+
     def __repr__(self):
         return f"<Line 0x{self.address:08x} - {self.value!r}>"
 

@@ -1,14 +1,10 @@
 
 from __future__ import annotations
-
 from typing import TYPE_CHECKING, Iterable
 
-from dragodis.exceptions import UnsupportedError
 from dragodis.ida.line import IDALine
 from dragodis.ida.memory import IDAMemory
-from dragodis.interface import Segment, SegmentType, SegmentPermission
-from dragodis.utils import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
+from dragodis.interface import Segment, SegmentPermission
 
 if TYPE_CHECKING:
     import ida_segment
@@ -22,15 +18,15 @@ class IDASegment(Segment):
         self._segment_t = segment_t
         self._end = None  # caching for end address.
 
-    @cached_property
+    @property
     def name(self) -> str:
         return self._ida._ida_segment.get_segm_name(self._segment_t)
 
-    @cached_property
+    @property
     def start(self) -> int:
         return self._segment_t.start_ea
 
-    @cached_property
+    @property
     def end(self) -> int:
         if self._end is None:
             # Exclude any overlay of uninitialized bytes from the segment.
@@ -43,11 +39,11 @@ class IDASegment(Segment):
             self._end = end
         return self._end
 
-    @cached_property
+    @property
     def bit_size(self) -> int:
         return self._segment_t.abits()
 
-    @cached_property
+    @property
     def permissions(self) -> SegmentPermission:
         perm = self._segment_t.perm
         ret = SegmentPermission(0)

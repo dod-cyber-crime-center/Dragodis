@@ -31,6 +31,31 @@ class GhidraFunctionSignature(FunctionSignature):
         return self._function.getSignature().getPrototypeString(True)
 
     @property
+    def calling_convention(self) -> str:
+        return self._function.getCallingConvention().getName()
+
+    @calling_convention.setter
+    def calling_convention(self, name: str):
+        if not name.startswith("__"):
+            name = f"__{name}"
+        from ghidra.util.exception import InvalidInputException
+        try:
+            self._function.setCallingConvention(name.lower())
+        except InvalidInputException as e:
+            raise ValueError(e)
+
+    @property
+    def return_type(self) -> GhidraDataType:
+        return GhidraDataType(self._function.getReturnType())
+
+    @return_type.setter
+    def return_type(self, data_type: Union[GhidraDataType, str]):
+        from ghidra.program.model.symbol import SourceType
+        if isinstance(data_type, str):
+            data_type = self._ghidra.get_data_type(data_type)
+        self._function.setReturnType(data_type._data_type, SourceType.USER_DEFINED)
+
+    @property
     def parameters(self) -> List[FunctionParameter]:
         return [
             GhidraFunctionParameter(self, self._ghidra, parameter)

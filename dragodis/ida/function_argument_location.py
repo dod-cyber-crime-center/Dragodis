@@ -1,9 +1,5 @@
 
 from __future__ import annotations
-
-from functools import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
-
 from typing import Tuple, TYPE_CHECKING
 
 from dragodis.ida.operand_value import IDARegister
@@ -27,21 +23,21 @@ class IDAArgumentLocation(ArgumentLocation):
 
 class IDAStackLocation(StackLocation, IDAArgumentLocation):
 
-    @cached_property
+    @property
     def stack_offset(self) -> int:
         return self._argloc.stkoff()
 
 
 class IDARegisterLocation(RegisterLocation, IDAArgumentLocation):
 
-    @cached_property
+    @property
     def register(self) -> IDARegister:
         return IDARegister(self._ida, self._argloc.reg1(), self._size)
 
 
 class IDARegisterPairLocation(RegisterPairLocation, IDAArgumentLocation):
 
-    @cached_property
+    @property
     def registers(self) -> Tuple[IDARegister, IDARegister]:
         # Size is the combination of both registers.
         size = self._size // 2
@@ -53,12 +49,12 @@ class IDARegisterPairLocation(RegisterPairLocation, IDAArgumentLocation):
 
 class IDARelativeRegisterLocation(RelativeRegisterLocation, IDARegisterLocation):
 
-    @cached_property
+    @property
     def register(self) -> IDARegister:
         rrel = self._argloc.get_rrel()
         return IDARegister(self._ida, rrel.reg, self._size)
 
-    @cached_property
+    @property
     def offset(self) -> int:
         rrel = self._argloc.get_rrel()
         return rrel.off
@@ -66,7 +62,7 @@ class IDARelativeRegisterLocation(RelativeRegisterLocation, IDARegisterLocation)
 
 class IDAStaticLocation(StaticLocation, IDAArgumentLocation):
 
-    @cached_property
+    @property
     def address(self) -> int:
         return self._argloc.get_ea()
 

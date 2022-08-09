@@ -10,6 +10,12 @@ class DataType(metaclass=abc.ABCMeta):
     def __str__(self) -> str:
         return self.name
 
+    def __repr__(self) -> str:
+        return f"<DataType: {self.name}, size={self.size}>"
+
+    def __eq__(self, other):
+        return isinstance(other, DataType) and self.name == other.name and self.size == other.size
+
     @property
     def name(self) -> str:
         """

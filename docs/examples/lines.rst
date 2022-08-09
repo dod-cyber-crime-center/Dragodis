@@ -7,6 +7,8 @@ Lines can be either code or data.
 .. code:: python
 
     >>> line = dis.get_line(0x401014)
+    >>> print(line)
+    0x00401014: movsx   ecx, byte ptr [eax]
     >>> print(hex(line.address))
     0x401014
 

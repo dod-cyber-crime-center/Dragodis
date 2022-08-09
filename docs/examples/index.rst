@@ -13,3 +13,4 @@ Examples
     flowcharts
     structures
     segments
+    variables

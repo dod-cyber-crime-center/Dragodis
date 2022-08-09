@@ -22,6 +22,9 @@ class Memory(io.BufferedIOBase, metaclass=abc.ABCMeta):
         self.end = end
         self._offset = 0
 
+    def __repr__(self) -> str:
+        return f"<Memory 0x{self.start:08x} - 0x{self.end:08x}>"
+
     def __enter__(self):
         return self
 

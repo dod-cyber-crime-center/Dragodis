@@ -23,12 +23,13 @@ class IDALine(Line):
     def __init__(self, ida: IDA, addr: int):
         super().__init__(ida)
         self._ida = ida
+        if addr < 0:
+            raise NotExistError(f"Got negative address: {addr}")
         # IDA has no concept of a "line", so we'll keep track of the start address,
         # which IDA refers to as the "head".
         start_addr = self._ida._ida_bytes.get_item_head(addr)
-        # If ida returns the unsigned value of -1 for some bit length
-        if (start_addr - (1 << start_addr.bit_length())) == -1:
-            raise NotExistError(f"Line at {hex(addr)} does not exist")
+        if start_addr == self._ida._BADADDR:
+            raise NotExistError(f"Line at {hex(addr)} does not exist.")
         self._addr = start_addr
         self._name = None
 

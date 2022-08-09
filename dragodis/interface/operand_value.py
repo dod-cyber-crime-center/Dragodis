@@ -21,6 +21,12 @@ class Immediate(int, OperandValue):
     Defines an immediate or constant used in an operand.
     """
 
+    def __str__(self) -> str:
+        return str(int(self))
+
+    def __repr__(self) -> str:
+        return f"<Immediate {self}>"
+
 
 class MemoryReference(int, OperandValue):
     """
@@ -28,15 +34,13 @@ class MemoryReference(int, OperandValue):
     item in the disassembler.
     """
 
-    @property
-    @abc.abstractmethod
-    def name(self) -> str:
-        """
-        The referenced name of the defined memory reference.
-        """
+    def __str__(self) -> str:
+        return f"0x{self:08x}"
+
+    def __repr__(self) -> str:
+        return f"<MemoryReference {self}>"
 
 
-# TODO: Should Register be of type str?
 class Register(OperandValue, metaclass=abc.ABCMeta):
     """
     Register objects represent the register components of operands.
@@ -46,7 +50,7 @@ class Register(OperandValue, metaclass=abc.ABCMeta):
         return self.name
 
     def __repr__(self):
-        return f"<Register {self.name} - bit_width = {self.bit_width}>"
+        return f"<Register {self.name} - bit_width={self.bit_width}>"
 
     @abc.abstractmethod
     def __eq__(self, register: "Register"):
@@ -66,19 +70,49 @@ class Register(OperandValue, metaclass=abc.ABCMeta):
 class RegisterList(List[Register], OperandValue):
     """
     Defines a list of registers used as an operand.
-    e.g.
+
+    .. code::
+
         {R4-R10,LR}
     """
+
+    def __str__(self) -> str:
+        return f"{{{','.join(self)}}}"
+
+    def __repr__(self) -> str:
+        return f"<RegisterList {super().__repr__()}>"
 
 
 class Phrase(OperandValue):
     """
     Defines an operand phrase of one of the following forms:
+
+    .. code::
+
         [base + index * scale + offset]
         [base + offset]
     """
 
     # TODO: For capstone, x86 had "segment" and ARM had "lshift"
+
+    def __str__(self) -> str:
+        segments = []
+        if (base := self.base) is not None:
+            segments.append(str(base))
+        if (index := self.index) is not None:
+            segments.append(f"{index}*0x{self.scale:x}")
+        if offset := self.offset:
+            if isinstance(offset, int):
+                segments.append(f"0x{offset:x}")
+            else:
+                segments.append(str(offset))
+        return f"[{' + '.join(segments)}]"
+
+    def __repr__(self) -> str:
+        offset = self.offset
+        if isinstance(offset, int):
+            offset = f"0x{offset:x}"
+        return f"<Phrase base={self.base}, index={self.index}, scale={self.scale}, offset={offset}>"
 
     @property
     @abc.abstractmethod
@@ -86,7 +120,10 @@ class Phrase(OperandValue):
         """
         The base register if operand is a phrase.
         May be None if there is no base:
-            e.g. dword ptr [EAX*0x4 + DAT_0040dc20]
+
+        .. code::
+
+            dword ptr [EAX*0x4 + DAT_0040dc20]
         """
 
     @property

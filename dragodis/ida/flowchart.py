@@ -1,11 +1,7 @@
 
 from __future__ import annotations
-
-from functools import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
 from typing import Iterable, TYPE_CHECKING
 
-from dragodis.ida.line import IDALine
 from dragodis.interface import Flowchart, BasicBlock, FlowType
 
 if TYPE_CHECKING:
@@ -20,15 +16,15 @@ class IDABasicBlock(BasicBlock):
         self._ida = ida
         self._block = block
 
-    @cached_property
+    @property
     def start(self) -> int:
         return self._block.start_ea
 
-    @cached_property
+    @property
     def end(self) -> int:
         return self._block.end_ea
 
-    @cached_property
+    @property
     def flow_type(self) -> FlowType:
         # IDA leaves self._block.type much to be desired,
         # so we'll just look at the last instruction instead.
@@ -36,7 +32,7 @@ class IDABasicBlock(BasicBlock):
             return line.instruction.flow_type
         raise ValueError(f"Block at {hex(self.start)} has no instructions.")
 
-    @cached_property
+    @property
     def flowchart(self) -> "IDAFlowchart":
         return IDAFlowchart(self._ida, self._block._fc)
 

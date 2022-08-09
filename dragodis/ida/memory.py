@@ -117,7 +117,6 @@ class IDAMemory(Memory):
             return b""
 
         address = self.start + self._offset
-        # data = self._ida._ida_helpers.get_bytes(address, size)
         data = self._cache.get(address, size)
 
         self._offset += len(data)

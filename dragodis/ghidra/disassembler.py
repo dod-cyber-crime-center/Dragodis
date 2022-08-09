@@ -4,8 +4,6 @@ import os
 import pathlib
 from typing import TYPE_CHECKING, Optional
 
-import pyhidra
-
 from dragodis import utils
 from dragodis.exceptions import NotInstalledError
 from dragodis.interface import BackendDisassembler
@@ -90,6 +88,8 @@ class GhidraRemoteDisassembler(GhidraDisassembler):
             raise ValueError(f"Ghidra disassembler already running.")
 
         logger.debug(f"Starting pyhidra connection to {self.input_path}")
+        # Importing here since pyhidra requires environment variables to be setup during import.
+        import pyhidra
         self._bridge = pyhidra.open_program(self.input_path)
         self._flatapi = self._bridge.__enter__()
         self._program = self._flatapi.getCurrentProgram()

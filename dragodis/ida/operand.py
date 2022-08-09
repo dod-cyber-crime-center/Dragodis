@@ -1,5 +1,5 @@
-from __future__ import annotations
 
+from __future__ import annotations
 from typing import Optional, TYPE_CHECKING, Union, Tuple
 
 from dragodis.exceptions import NotExistError
@@ -12,16 +12,11 @@ from dragodis.ida.operand_value import (
     IDAARMPhrase, IDAx86Phrase, IDARegisterList,
 )
 from dragodis.interface.types import ARMShiftType
-from dragodis.utils import cached_property
 
 if TYPE_CHECKING:
+    import ida_ua
     from dragodis.ida.flat import IDA
     from dragodis.ida.instruction import IDAInstruction
-
-# Used for typing.
-# noinspection PyUnreachableCode
-if False:
-    import ida_ua
 
 
 # TODO: Cache this operand to return same object for same address.
@@ -53,23 +48,24 @@ class IDAOperand(Operand):
     def index(self) -> int:
         return self._index
 
-    @cached_property
+    @property
     def text(self) -> str:
         # Get operand text and then remove the color tags.
         # (Doing same thing as idc.print_operand())
         text = self._ida._ida_ua.print_operand(self.address, self.index)
         return self._ida._ida_lines.tag_remove(text)
 
-    @cached_property
+    @property
     def type(self) -> OperandType:
-        # Equivalent to idc.get_operand_type(), but using already cached op_t object.
-        op_type = self._op_t.type
+        # NOTE: Getting operand type using get_operand_type() instead of _op_t.type because
+        #   there are strange issues where `_op_t.type` will sometimes give us something completely wrong.
+        op_type = self._ida._idc.get_operand_type(self._addr, self._index)
         try:
             return self._type_map[op_type]
         except KeyError:
             raise RuntimeError(f"Unexpected operand type: {op_type}")
 
-    @cached_property
+    @property
     def value(self) -> OperandValue:
         operand_type = self.type
         # TODO: Should we be recording both .value and .addr in the MemoryReference object?
@@ -78,17 +74,21 @@ class IDAOperand(Operand):
         elif operand_type == OperandType.register:  # o_reg
             return IDARegister(self._ida, self._op_t.reg, self.width)
         elif operand_type == OperandType.immediate:  # o_imm
-            return IDAImmediate(self._op_t.value)
+            value = self._op_t.value
+            # Need to mask off the value based on width since IDA will sometimes
+            # include ff bytes in the front causing the value to be incorrect.
+            value &= (1 << (8 * self.width)) - 1
+            return IDAImmediate(value)
 
         # Architecture specific operands types like phrase should be handled by the
         # appropriate subclass.
         raise ValueError(f"Invalid operand type: {operand_type!r} @ {hex(self.address)}:{self.index}")
 
-    @cached_property
+    @property
     def width(self) -> int:
         return self._ida._ida_ua.get_dtype_size(self._op_t.dtype)
 
-    @cached_property
+    @property
     def variable(self) -> Optional[IDAVariable]:
         value = self.value
         if isinstance(value, Phrase):
@@ -120,7 +120,7 @@ class IDAARMOperand(IDAOperand, ARMOperand):
         9: OperandType.register_list,  # ida_arm.o_reglist
     }
 
-    @cached_property
+    @property
     def shift(self) -> Tuple[ARMShiftType, Union[int, IDARegister]]:
         if self._op_t.type == self._ida._ida_ua.o_phrase:
             # For a phrase, shift count is in op.value
@@ -137,7 +137,7 @@ class IDAARMOperand(IDAOperand, ARMOperand):
 
         return ARMShiftType.LSL, 0  # not shifted
 
-    @cached_property
+    @property
     def value(self) -> OperandValue:
         # Get value for ARM specific types.
         operand_type = self.type
@@ -159,7 +159,7 @@ class IDAARMOperand(IDAOperand, ARMOperand):
 
 class IDAx86Operand(IDAOperand, x86Operand):
 
-    @cached_property
+    @property
     def type(self) -> OperandType:
         # For x86, there is a weird corner case, where we could have something like
         # dword_40DC20[eax*4], which really is closer to a phrase, without
@@ -176,7 +176,7 @@ class IDAx86Operand(IDAOperand, x86Operand):
                 pass
         return type
 
-    @cached_property
+    @property
     def value(self) -> OperandValue:
         # Get value for x86 specific types.
         operand_type = self.type

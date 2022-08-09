@@ -1,5 +1,5 @@
-from __future__ import annotations
 
+from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 from dragodis.exceptions import NotExistError
@@ -8,16 +8,9 @@ from dragodis.interface.types import FlowType
 from dragodis.interface.instruction import (
     Instruction, x86Instruction, ARMInstruction, ARMConditionCode
 )
-from dragodis.utils import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     from dragodis.ida.flat import IDA
-
-# Used for typing.
-# noinspection PyUnreachableCode
-if False:
-    import ida_ua
 
 
 # TODO: Perhaps have a local helper utility that pulls and caches all the instruction
@@ -38,7 +31,7 @@ class IDAInstruction(Instruction):
     def address(self):
         return self._addr
 
-    @cached_property
+    @property
     def flow_type(self) -> FlowType:
         if self._ida._ida_idp.is_call_insn(self._insn_t):
             return FlowType.call
@@ -58,30 +51,30 @@ class IDAInstruction(Instruction):
         else:
             return FlowType.unconditional_jump
 
-    @cached_property
+    @property
     def mnemonic(self) -> str:
         return (self._ida._ida_ua.ua_mnem(self.address) or "").lower()
 
-    @cached_property
+    @property
     def root_mnemonic(self) -> str:
         return self._insn_t.get_canon_mnem().lower()
 
-    @cached_property
+    @property
     def operands(self) -> List[IDAOperand]:
         return [
             self._Operand(self, self._ida, self.address, index, op)
             for index, op in self._ida._ida_helpers.get_operands(self.address)
         ]
 
-    @cached_property
+    @property
     def text(self) -> str:
         return self._ida._idc.GetDisasm(self.address)
 
-    @cached_property
+    @property
     def stack_depth(self) -> int:
         return self._ida._idc.get_spd(self.address)
 
-    @cached_property
+    @property
     def stack_delta(self) -> int:
         # NOTE: IDA gives the delta in relation to the previous instruction,
         #   but we want the delta that this instructions applies.
@@ -94,20 +87,30 @@ class IDAInstruction(Instruction):
 class IDAx86Instruction(IDAInstruction, x86Instruction):
     _Operand = IDAx86Operand
 
+    @property
+    def rep(self) -> Optional[str]:
+        if self.data[0] in (0xF2, 0xF3):
+            text = self.text.lower()
+            if not text.startswith("rep"):
+                raise AssertionError(f"Expected instruction to start with rep: {text}")
+            rep, _, _ = text.partition(" ")
+            return rep
+        return None
+
 
 class IDAARMInstruction(IDAInstruction, ARMInstruction):
     _Operand = IDAARMOperand
 
-    @cached_property
+    @property
     def update_flags(self) -> bool:
         return bool(self._insn_t.auxpref & self._ida._ida_arm.aux_cond)
 
-    @cached_property
+    @property
     def condition_code(self) -> ARMConditionCode:
         condition = self._ida._ida_arm.get_cond(self._insn_t)
         return ARMConditionCode(condition)
 
-    @cached_property
+    @property
     def writeback(self) -> bool:
         return bool(
             self._insn_t.auxpref & (
@@ -118,11 +121,11 @@ class IDAARMInstruction(IDAInstruction, ARMInstruction):
             or self.mnemonic in ("push", "pop")
         )
 
-    @cached_property
+    @property
     def pre_indexed(self) -> bool:
         return self.writeback and not self._insn_t.auxpref & self._ida._ida_arm.aux_postidx
 
-    @cached_property
+    @property
     def post_indexed(self) -> bool:
         return self.writeback and bool(self._insn_t.auxpref & self._ida._ida_arm.aux_postidx)
 

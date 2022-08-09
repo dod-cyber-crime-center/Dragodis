@@ -8,7 +8,47 @@ an easy way to interact with the various attributes of functions.
 
     >>> func = dis.get_function(0x40100A)
     >>> print(func)
-    <Function 0x00401000 - sub_401000>
+    sub_401000()
+    >>> signature = func.signature
+    >>> print(signature)
+    _BYTE *__cdecl sub_401000(_BYTE *a1, char a2);
+    >>> print(signature.return_type)
+    byte *
+    >>> orig_type = signature.return_type
+    >>> signature.return_type = "int"
+    >>> print(signature)
+    INT __cdecl sub_401000(_BYTE *a1, char a2);
+    >>> signature.return_type = orig_type
+    >>> print(signature.calling_convention)
+    __cdecl
+    >>> for param in signature.parameters:
+    ...     print(param)
+    stack[0x0]: _BYTE * a1
+    stack[0x4]: char a2
+
+    >>> # Changing the calling convention also updates parameter locations.
+    >>> signature.calling_convention = "fastcall"
+    >>> for param in signature.parameters:
+    ...     print(param)
+    ecx: _BYTE * a1
+    dl: char a2
+    >>> signature.calling_convention = "cdecl"
+
+    >>> print(func.source_code)
+    _BYTE *__cdecl sub_401000(_BYTE *a1, char a2)
+    {
+      _BYTE *result; // eax
+    <BLANKLINE>
+      while ( 1 )
+      {
+        result = a1;
+        if ( !*a1 )
+          break;
+        *a1++ ^= a2;
+      }
+      return result;
+    }
+    <BLANKLINE>
 
     >>> print(hex(func.start))
     0x401000
@@ -18,7 +58,7 @@ an easy way to interact with the various attributes of functions.
     >>> # Give function a custom name.
     >>> func.name = "get_key"
     >>> print(func)
-    <Function 0x00401000 - get_key>
+    get_key()
     >>> print(func.name)
     get_key
 

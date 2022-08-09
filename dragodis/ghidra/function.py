@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Iterable
 
 from dragodis.ghidra.flowchart import GhidraFlowchart
+from dragodis.ghidra.function_signature import GhidraFunctionSignature
 from dragodis.ghidra.instruction import GhidraInstruction
 from dragodis.ghidra.reference import GhidraReference
 from dragodis.ghidra.stack import GhidraStackFrame
@@ -27,10 +28,6 @@ class GhidraFunction(Function):
     @property
     def _body(self) -> "ghidra.program.model.address.AddressSetView":
         return self._function.getBody()
-
-    @property
-    def _source_type(self) -> "ghidra.program.model.symbol.SourceType":
-        return self._function.getSignatureSource()
 
     @property
     def start(self) -> int:
@@ -60,7 +57,8 @@ class GhidraFunction(Function):
 
     @name.setter
     def name(self, value: Optional[str]):
-        self._function.setName(value, self._source_type)
+        from ghidra.program.model.symbol import SourceType
+        self._function.setName(value, SourceType.USER_DEFINED)
 
     def set_comment(self, comment: Optional[str], comment_type=CommentType.plate):
         if comment_type in (CommentType.anterior, CommentType.plate):
@@ -80,6 +78,10 @@ class GhidraFunction(Function):
     @property
     def stack_frame(self) -> GhidraStackFrame:
         return GhidraStackFrame(self._ghidra, self._function.getStackFrame())
+
+    @property
+    def signature(self) -> GhidraFunctionSignature:
+        return GhidraFunctionSignature(self._ghidra, self._function)
 
     @property
     def is_library(self) -> bool:

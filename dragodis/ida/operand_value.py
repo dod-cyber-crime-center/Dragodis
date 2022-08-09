@@ -1,14 +1,11 @@
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING, Union, List, Optional
+from typing import TYPE_CHECKING, Union, Optional
 
 from dragodis.interface.operand_value import (
     OperandValue, Immediate, MemoryReference, Register,
     RegisterList, Phrase,
 )
-from dragodis.utils import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
 
 if TYPE_CHECKING:
     import ida_ua
@@ -40,11 +37,11 @@ class IDARegister(Register):
             return self._reg == other._reg and self._width == other._width
         return False
 
-    @cached_property
+    @property
     def bit_width(self) -> int:
         return self._width * 8
 
-    @cached_property
+    @property
     def name(self) -> str:
         return self._ida._ida_idp.get_reg_name(self._reg, self._width).lower()
 
@@ -67,7 +64,7 @@ class IDAARMPhrase(Phrase):
         self._op_t = op_t
         self._width = ida.bit_size // 8
 
-    @cached_property
+    @property
     def base(self) -> IDARegister:
         """
         The base register
@@ -89,7 +86,7 @@ class IDAARMPhrase(Phrase):
         """
         return 1
 
-    @cached_property
+    @property
     def offset(self) -> Union[IDARegister, int]:
         """
         The offset or displacement.
@@ -130,7 +127,7 @@ class IDAx86Phrase(Phrase):
         self._op_t = op_t
         self._width = ida.bit_size // 8
 
-    @cached_property
+    @property
     def base(self) -> Optional[IDARegister]:
         """
         The base register.
@@ -142,7 +139,7 @@ class IDAx86Phrase(Phrase):
             return None
         return IDARegister(self._ida, base_reg, self._width)
 
-    @cached_property
+    @property
     def index(self) -> Optional[IDARegister]:
         """
         The index register
@@ -154,7 +151,7 @@ class IDAx86Phrase(Phrase):
             return None
         return IDARegister(self._ida, index_reg, self._width)
 
-    @cached_property
+    @property
     def scale(self) -> int:
         """
         The scaling factor for the index.
@@ -165,7 +162,7 @@ class IDAx86Phrase(Phrase):
         """
         return 1 << self._ida._ida_intel.sib_scale(self._op_t)
 
-    @cached_property
+    @property
     def offset(self) -> int:
         """
         The offset or displacement.

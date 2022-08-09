@@ -12,6 +12,12 @@ from dragodis.interface.variable import StackVariable
 class StackFrame(MutableMapping, metaclass=abc.ABCMeta):
     """Function Stack Frame"""
 
+    def __str__(self) -> str:
+        return str(dict(self))
+
+    def __repr__(self):
+        return f"<StackFrame {self}>"
+
     @abc.abstractmethod
     def __getitem__(self, name_or_offset: Union[str, int]) -> StackVariable:
         """

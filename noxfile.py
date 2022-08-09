@@ -32,6 +32,7 @@ def doc(session):
     shutil.rmtree("dist/docs", ignore_errors=True)
     session.install("sphinx")
     session.install("sphinx-rtd-theme")
+    session.install("myst-parser")
     session.install("-e", ".")
 
     # Autodoc

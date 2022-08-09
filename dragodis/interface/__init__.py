@@ -19,5 +19,6 @@ from .operand_value import (
 from .reference import Reference
 from .segment import Segment
 from .stack import StackFrame
+from .symbol import Symbol
 from .types import *
 from .variable import *

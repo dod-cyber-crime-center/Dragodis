@@ -2,21 +2,13 @@
 Interface for cross references.
 """
 from __future__ import annotations
-
-from functools import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
-
 from typing import TYPE_CHECKING
 
 from dragodis.interface import Reference, ReferenceType
 
 if TYPE_CHECKING:
-    from dragodis.ida.flat import IDA
-
-# Used for typing
-# noinspection PyUnreachableCode
-if False:
     import ida_xref
+    from dragodis.ida.flat import IDA
 
 
 # noinspection PyPropertyAccess
@@ -42,23 +34,23 @@ class IDAReference(Reference):
         self._ida = ida
         self._xref = xref
 
-    @cached_property
+    @property
     def from_address(self) -> int:
         return self._xref.frm
 
-    @cached_property
+    @property
     def is_code(self) -> bool:
         return bool(self._xref.iscode)
 
-    @cached_property
+    @property
     def is_data(self) -> bool:
         return self.type.name.startswith("data")  # TODO: confirm
 
-    @cached_property
+    @property
     def to_address(self) -> int:
         return self._xref.to
 
-    @cached_property
+    @property
     def type(self) -> ReferenceType:
         try:
             return self._type_map[self._xref.type]

@@ -1,11 +1,10 @@
 
 from __future__ import annotations
 
-from functools import cached_property, lru_cache
+from functools import lru_cache
 
 from .. import utils
 
-cached_property = property  # FIXME: cached property disabled for now.
 from typing import Iterable, Union
 
 from dragodis.interface.flat import FlatAPI
@@ -29,14 +28,14 @@ cache = lru_cache(maxsize=1024)
 
 class IDA(FlatAPI, IDADisassembler):
 
-    @cached_property
+    @property
     def _cached_memory(self):
         return CachedMemory(self)
 
     def _bytes_loaded(self, addr: int, num_bytes: int) -> bool:
         return self._ida_helpers.is_loaded(addr, num_bytes)
 
-    @cached_property
+    @property
     def bit_size(self) -> int:
         # IDA 7.6 adds ida_ida.inf_get_app_bitness()
         if self._idaapi.IDA_SDK_VERSION >= 760:
@@ -49,7 +48,7 @@ class IDA(FlatAPI, IDADisassembler):
         else:
             return 16
 
-    @cached_property
+    @property
     def is_big_endian(self) -> bool:
         return self._ida_ida.inf_is_be()
 
@@ -233,7 +232,7 @@ class IDA(FlatAPI, IDADisassembler):
     def open_memory(self, start: int, end: int) -> IDAMemory:
         return IDAMemory(self, start, end)
 
-    @cached_property
+    @property
     def processor_name(self) -> str:
         proc = self._ida_ida.inf_get_procname()
         # Switching "metapc" to "x86" to match Ghidra.

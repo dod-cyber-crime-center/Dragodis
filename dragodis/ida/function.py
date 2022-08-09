@@ -1,10 +1,5 @@
 from __future__ import annotations
-
-from functools import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
-
 import logging
-import re
 from typing import Optional, TYPE_CHECKING
 
 from dragodis.exceptions import *
@@ -14,8 +9,6 @@ from dragodis.interface import Function, CommentType
 
 if TYPE_CHECKING:
     import ida_funcs
-    import ida_hexrays
-    import ida_typeinf
     from dragodis.ida.flat import IDA
 
 
@@ -45,15 +38,15 @@ class IDAFunction(Function):
         # return func is self  # TODO: Should be able to do this when reuse caching is on
         return func.start == self.start
 
-    @cached_property
+    @property
     def start(self) -> int:
         return self._func_t.start_ea
 
-    @cached_property
+    @property
     def end(self) -> int:
         return self._func_t.end_ea
 
-    @cached_property
+    @property
     def flowchart(self) -> IDAFlowchart:
         return IDAFlowchart(self._ida, self._ida._ida_gdl.FlowChart(self._func_t))
 
@@ -93,7 +86,7 @@ class IDAFunction(Function):
         else:
             raise ValueError(f"Invalid comment type for function: {repr(comment_type)}")
 
-    @cached_property
+    @property
     def source_code(self) -> Optional[str]:
         decompiled_code = self._ida._ida_helpers.decompiled_code(self.start)
         if decompiled_code:

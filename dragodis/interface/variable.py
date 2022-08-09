@@ -9,6 +9,12 @@ from dragodis.interface.data_type import DataType
 class Variable(metaclass=ABCMeta):
     """Function Local/Global Variable"""
 
+    def __str__(self) -> str:
+        return f"{self.data_type} {self.name}"
+
+    def __repr__(self) -> str:
+        return f"<Variable {self} - size={self.size}>"
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -38,6 +44,12 @@ class Variable(metaclass=ABCMeta):
 class GlobalVariable(Variable, metaclass=ABCMeta):
     """Global variable usually defined in the .data section."""
 
+    def __str__(self) -> str:
+        return f"0x{self.address:08x}: {super().__str__()}"
+
+    def __repr__(self) -> str:
+        return f"<GlobalVariable {self} - size={self.size}>"
+
     @property
     @abstractmethod
     def address(self) -> int:
@@ -48,6 +60,12 @@ class GlobalVariable(Variable, metaclass=ABCMeta):
 
 class StackVariable(Variable, metaclass=ABCMeta):
     """Function Stack/Local Variable"""
+
+    def __str__(self) -> str:
+        return f"stack[0x{self.stack_offset:x}]: {super().__str__()}"
+
+    def __repr__(self) -> str:
+        return f"<StackVariable {self} - size={self.size}>"
 
     @property
     @abstractmethod

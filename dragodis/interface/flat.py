@@ -41,6 +41,12 @@ class FlatAPI(metaclass=abc.ABCMeta):
         super().__init__(*args, **kwargs)  # forward to Disassembler class
         self.__capstone_dis = None
 
+    def __repr__(self):
+        return (
+            f"<Disassembler "
+            f"{self.name}:{self.processor_name}:{self.bit_size}-{'BE' if self.is_big_endian else 'LE'}>"
+        )
+
     @property
     def _capstone_dis(self) -> capstone.Cs:
         """

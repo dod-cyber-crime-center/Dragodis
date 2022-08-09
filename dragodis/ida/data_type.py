@@ -1,8 +1,5 @@
 
 from __future__ import annotations
-
-# from functools import cached_property
-cached_property = property  # FIXME: cached property disabled for now.
 from typing import TYPE_CHECKING
 
 from dragodis.interface.data_type import DataType
@@ -26,7 +23,7 @@ class IDADataType(DataType):
         self._tinfo = tinfo
         self._address = address
 
-    @cached_property
+    @property
     def name(self) -> str:
         if self._tinfo:
             return str(self._tinfo).lower().strip("_")
@@ -49,7 +46,7 @@ class IDADataType(DataType):
             flags &= self._ida._ida_bytes.DT_TYPE
             return TYPE_MAP[flags]
 
-    @cached_property
+    @property
     def size(self) -> int:
         if self._tinfo:
             return self._tinfo.get_size()

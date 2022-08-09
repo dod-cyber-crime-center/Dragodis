@@ -10,7 +10,7 @@ from dragodis.interface.types import FlowType
 from dragodis.interface.operand import Operand, ARMOperand, x86Operand
 
 if TYPE_CHECKING:
-    from dragodis.interface import Reference, FlatAPI, Line
+    from dragodis.interface import Reference, FlatAPI, Line, Variable
 
 
 class Instruction(metaclass=abc.ABCMeta):
@@ -201,6 +201,15 @@ class Instruction(metaclass=abc.ABCMeta):
         The change in stack depth if the instruction was applied.
         """
 
+    @property
+    def variables(self) -> Iterable[Variable]:
+        """
+        Iterates the variables in the instruction.
+        """
+        for operand in self.operands:
+            if variable := operand.variable:
+                yield variable
+
 
 class ARMConditionCode(IntEnum):
     INVALID = -1
@@ -260,6 +269,9 @@ class ARMInstruction(Instruction):
         """
         Whether the instruction has a pre-indexed writeback.
         Ie, the register is updated before evaluation:
+
+        .. code::
+
             [R1, 8]!
         """
         return self.writeback and "!" in self.text
@@ -269,6 +281,9 @@ class ARMInstruction(Instruction):
         """
         Whether the instruction has a post-indexed writeback.
         Ie, the register is updated after evaluation:
+
+        .. code::
+
             [R1], 8
         """
         return self.writeback and "!" not in self.text
@@ -277,6 +292,17 @@ class ARMInstruction(Instruction):
 class x86Instruction(Instruction):
     _Operand = x86Operand
 
+    @property
+    @abc.abstractmethod
+    def rep(self) -> Optional[str]:
+        """
+        Rep prefix applied to instruction if provided.
+
+        .. code::
+
+            rep
+            repne
+        """
 
 
 Instruction._ARMInstruction = ARMInstruction

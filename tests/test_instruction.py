@@ -62,10 +62,16 @@ def test_flow_type(disassembler, address, flow_type):
 
 @pytest.mark.parametrize("address,root_mnem", [
     (0x40100D, "movsx"),
+    # original has "rep movsd" or "MOVSD.REP"
+    # NOTE: not requiring the "d" to be removed since that is not possible for Ghidra to detect.
+    (0x405c5a, ("movsd", "movs")),
 ])
 def test_root_mnemonic_x86(disassembler, address, root_mnem):
     instruction = disassembler.get_instruction(address)
-    assert instruction.root_mnemonic == root_mnem
+    if isinstance(root_mnem, tuple):
+        assert instruction.root_mnemonic in root_mnem
+    else:
+        assert instruction.root_mnemonic == root_mnem
 
 
 @pytest.mark.parametrize("address,root_mnem", [
@@ -75,6 +81,16 @@ def test_root_mnemonic_x86(disassembler, address, root_mnem):
 def test_root_mnemonic_arm(disassembler, address, root_mnem):
     instruction = disassembler.get_instruction(address)
     assert instruction.root_mnemonic == root_mnem
+
+
+@pytest.mark.parametrize("address,rep", [
+    (0x4047aa, "rep"),  # rep movsd
+    (0x408590, "rep"),  # rep stosd
+    (0x40858a, None),   # mov
+])
+def test_rep_x86(disassembler, address, rep):
+    instruction = disassembler.get_instruction(address)
+    assert instruction.rep == rep
 
 
 @pytest.mark.parametrize("address,condition_code", [

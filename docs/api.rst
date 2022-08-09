@@ -1,6 +1,0 @@
-API
-===
-
-.. toctree::
-
-   api/interface

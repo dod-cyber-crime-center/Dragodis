@@ -43,6 +43,42 @@ def test_signature_declaration_ghidra(disassembler, address, declaration):
     assert signature.declaration == declaration
 
 
+@pytest.mark.parametrize("address,calling_convention", [
+    (0x401000, "__cdecl"),
+    (0x40a0c4, "__stdcall"),
+])
+def test_calling_convention(disassembler, address, calling_convention):
+    signature = disassembler.get_function_signature(address)
+    # test getting calling convention
+    assert signature.calling_convention == calling_convention
+    # Ghidra doesn't include the "__" in declaration
+    assert calling_convention.lstrip("_") in signature.declaration
+    # test changing calling convention
+    signature.calling_convention = "fastcall"
+    assert signature.calling_convention == "__fastcall"
+    assert "fastcall" in signature.declaration
+    # reset
+    signature.calling_convention = calling_convention
+    assert signature.calling_convention == calling_convention
+
+
+@pytest.mark.parametrize("address,return_types", [
+    (0x401150, ("int", "undefined4")),
+    (0x40a0c4, ("lpvoid", "LPVOID")),
+])
+def test_return_type(disassembler, address, return_types):
+    signature = disassembler.get_function_signature(address)
+    # test getting the return type
+    orig_type = signature.return_type
+    assert str(orig_type) in return_types
+    # test setting the return type
+    signature.return_type = "char *"
+    assert str(signature.return_type) == "char *"
+    # reset and test setting with DataType object.
+    signature.return_type = orig_type
+    assert signature.return_type == orig_type
+
+
 def test_parameters(disassembler):
     signature = disassembler.get_function_signature(0x401000)
     assert len(signature.parameters) == 2

@@ -4,6 +4,9 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+# Pull dragodis version before we mess with the path.
+from dragodis import __version__
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -18,11 +21,12 @@ sys.path.insert(1, os.path.abspath('../dragodis'))
 # -- Project information -----------------------------------------------------
 
 project = 'Dragodis'
-copyright = '2021, DC3'
+copyright = '2022, DC3'
 author = 'DC3'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+version = __version__
+release = version
 
 
 # -- General configuration ---------------------------------------------------
@@ -30,7 +34,10 @@ release = '0.2.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx_rtd_theme"
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx_rtd_theme",
+    "myst_parser",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

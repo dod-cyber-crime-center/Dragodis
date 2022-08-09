@@ -19,7 +19,7 @@ A *Memory* object for the underlying data can be obtained using the ``.open()`` 
 
     >>> segment = dis.get_segment(".text")
     >>> print(segment)
-    <Segment .text - 0x00401000 -> 0x00409c00>
+    .text: 0x00401000 --> 0x00409c00
 
     >>> segment.get_bytes(0x00401141, 4)
     b']\xc3\xcc\xcc'

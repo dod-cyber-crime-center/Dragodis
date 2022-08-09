@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from typing import List, TYPE_CHECKING
 
 from dragodis.exceptions import NotExistError
@@ -10,6 +11,9 @@ if TYPE_CHECKING:
     from dragodis.interface.types import FlowType
     from dragodis.ghidra.flat import Ghidra
     import ghidra
+
+
+logger = logging.getLogger(__name__)
 
 
 class GhidraInstruction(Instruction):
@@ -71,6 +75,11 @@ class GhidraInstruction(Instruction):
 
     @property
     def operands(self) -> List[GhidraOperand]:
+        # HACK: Ignore if operands are implied based on mnemonic.
+        # (This is done to better match how IDA does it.)
+        if "ES:" in self.text:
+            logger.debug(f"Ignoring implied operands at 0x%X: %s", self.address, self.text)
+            return []
         return [
             self._Operand(self._ghidra, self, index)
             for index in range(self._instruction.getNumOperands())
@@ -93,13 +102,25 @@ class GhidraInstruction(Instruction):
 
     @property
     def stack_delta(self) -> int:
-        from ghidra.app.cmd.function import CallDepthChangeInfo
-        addr = self._instruction.getAddress()
-        func = self._ghidra._listing.getFunctionContaining(addr)
-        info = CallDepthChangeInfo(func)
-        delta = info.getInstructionStackDepthChange(self._instruction)
-        if delta == func.UNKNOWN_STACK_DEPTH_CHANGE:
-            delta = 0
+        delta = 0
+        flowType = self._instruction.getFlowType()
+        if flowType.isCall() and flowType.isUnConditional():
+            # the delta we are looking for is actually stored in the function and not the instruction
+            flows = self._instruction.getFlows()
+            if len(flows) == 1:
+                func = self._ghidra._flatapi.getFunctionAt(flows[0])
+                delta = func.getStackPurgeSize()
+            else:
+                logger.warn(f'unexpected number of flows: {flows}')
+        else:
+            from ghidra.app.cmd.function import CallDepthChangeInfo
+            addr = self._instruction.getAddress()
+            func = self._ghidra._listing.getFunctionContaining(addr)
+            info = CallDepthChangeInfo(func)
+            delta = info.getInstructionStackDepthChange(self._instruction)
+            if delta == func.UNKNOWN_STACK_DEPTH_CHANGE:
+                delta = 0
+        logger.debug(f'stack delta at {self._instruction.getAddress()}: {delta}')
         return delta
 
 
@@ -109,6 +130,23 @@ class GhidraARMInstruction(GhidraInstruction, ARMInstruction):
 
 class Ghidrax86Instruction(GhidraInstruction, x86Instruction):
     _Operand = Ghidrax86Operand
+
+    @property
+    def mnemonic(self) -> str:
+        mnemonic = super().mnemonic
+        # Strip off .rep* prefix if there.
+        mnemonic, _, _ = mnemonic.partition(".rep")
+        return mnemonic
+
+    @property
+    def rep(self) -> Optional[str]:
+        if self.data[0] in (0xF2, 0xF3):
+            mnemonic = str(self._instruction.getMnemonicString()).lower()
+            if ".rep" not in mnemonic:
+                raise AssertionError(f"Expected .rep suffix instruction at 0x{self.address:08x}")
+            _, _, rep = mnemonic.partition(".")
+            return rep
+        return None
 
 
 GhidraInstruction._ARMInstruction = GhidraARMInstruction

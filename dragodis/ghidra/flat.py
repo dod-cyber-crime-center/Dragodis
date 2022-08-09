@@ -22,6 +22,7 @@ from .. import utils
 
 if TYPE_CHECKING:
     from ghidra.program.model.address import Address
+    import ghidra.program.model.listing
 
 
 class Ghidra(FlatAPI, GhidraDisassembler):
@@ -32,7 +33,10 @@ class Ghidra(FlatAPI, GhidraDisassembler):
         :raises NotExistError: If overflow error occurs.
         """
         try:
-            return self._flatapi.toAddr(hex(addr))
+            address = self._flatapi.toAddr(hex(addr))
+            if address is not None:
+                return address
+            raise NotExistError(f"Invalid address {hex(addr)}")
         except OverflowError:
             raise NotExistError(f"Invalid address {hex(addr)}. Expect 32 bit integer, got {addr.bit_length()}")
 
@@ -257,11 +261,11 @@ class Ghidra(FlatAPI, GhidraDisassembler):
     def exports(self) -> Iterable[GhidraExport]:
         symbol_table = self._program.getSymbolTable()
         for address in symbol_table.getExternalEntryPointIterator():
-            symbol = list(symbol_table.getUserSymbols(address))[0]
+            symbol = symbol_table.getPrimarySymbol(address)
             yield GhidraExport(self, symbol)
 
     @cached_property
-    def _static_functions(self) -> List["ghidra.program.database.function.FunctionDB"]:
+    def _static_functions(self) -> List[ghidra.program.model.listing.Function]:
         """
         Obtains the static functions defined by the FID service.
         """

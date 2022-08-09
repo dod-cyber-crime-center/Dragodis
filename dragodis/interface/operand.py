@@ -27,8 +27,11 @@ class Operand(metaclass=abc.ABCMeta):
         """
         self.instruction = instruction
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.text
+
+    def __repr__(self) -> str:
+        return f"<Operand 0x{self.address:08x}:{self.index} - {self.text}>"
 
     @property
     def _capstone_op(self) -> Union[capstone.arm.ArmOp, capstone.x86.X86Op]:

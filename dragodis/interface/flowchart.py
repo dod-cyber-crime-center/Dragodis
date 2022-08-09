@@ -16,8 +16,11 @@ class BasicBlock(metaclass=abc.ABCMeta):
     def __init__(self, api: FlatAPI):
         self._api = api
 
-    def __repr__(self):
-        return f"<BasicBlock 0x{self.start:08x} -> 0x{self.end:08x}>"
+    def __str__(self) -> str:
+        return f"block[0x{self.start:08x} --> 0x{self.end:08x}]"
+
+    def __repr__(self) -> str:
+        return f"<BasicBlock 0x{self.start:08x} --> 0x{self.end:08x}>"
 
     def __hash__(self):
         return hash(self.start)
@@ -161,11 +164,15 @@ class Flowchart(metaclass=abc.ABCMeta):
             return False
         return all(b1 == b2 for b1, b2 in zip(self.blocks, other.blocks))
 
-    def __repr__(self):
+    def __str__(self) -> str:
         # Get first block to indicate address.
         start = self.start
         start = f"0x{start:08x}" if start is not None else "Empty"
-        return f"<Flowchart {start}>"
+        return f"flowchart[{start}]"
+
+    def __repr__(self):
+        blocks = "\t\n".join(map(repr, self.blocks))
+        return f"<Flowchart \n\t{blocks}\n>"
 
     # TODO: This function should enforce that the order of the blocks is by address?
     #   I.E. Whatever the order IDA does.

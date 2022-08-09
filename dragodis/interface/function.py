@@ -9,7 +9,7 @@ from dragodis.interface.stack import StackFrame
 from dragodis.interface.types import ReferenceType
 
 if TYPE_CHECKING:
-    from dragodis.interface import Reference, Instruction, Flowchart, FlatAPI
+    from dragodis.interface import Reference, Instruction, Flowchart, FlatAPI, Variable
 
 from dragodis.interface.line import CommentType, Line
 
@@ -29,12 +29,11 @@ class Function(metaclass=abc.ABCMeta):
         """
         return self.start <= addr < self.end
 
+    def __str__(self) -> str:
+        return f"{self.name}()"
+
     def __repr__(self):
-        return (
-            f"<Function 0x{self.start:08x}"
-            f" - {self.name}"
-            f">"
-        )
+        return f"<Function 0x{self.start:08x}: {self}>"
 
     @property
     @abc.abstractmethod
@@ -82,6 +81,9 @@ class Function(metaclass=abc.ABCMeta):
 
         NOTE: This is BFS using the flowchart.
         If you need something simpler you can use .lines() directly:
+
+        .. code:: python
+
             lines = dis.lines(func.start, func.end)
         """
         for line in self.flowchart.lines(start, reverse=reverse):
@@ -97,6 +99,14 @@ class Function(metaclass=abc.ABCMeta):
             insn = line.instruction
             if insn:
                 yield insn
+
+    @property
+    def variables(self) -> Iterable[Variable]:
+        """
+        Iterates the variables in the function.
+        """
+        for insn in self.instructions():
+            yield from insn.variables
 
     @property
     @abc.abstractmethod

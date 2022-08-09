@@ -16,6 +16,12 @@ class Symbol(metaclass=abc.ABCMeta):
     Symbols match a specific address to a string name.
     """
 
+    def __str__(self) -> str:
+        return f"{self.name}: 0x{self.address:08x}"
+
+    def __repr__(self) -> str:
+        return f"<Symbol {self}>"
+
     @property
     @abc.abstractmethod
     def address(self) -> int:
@@ -43,6 +49,12 @@ class Import(Symbol):
     Imports are a type of Symbol which have an external source or module.
     """
 
+    def __str__(self) -> str:
+        return f"{self.namespace}/{self.name}: 0x{self.address:08x}"
+
+    def __repr__(self) -> str:
+        return f"<Import {self}>"
+
     @property
     @abc.abstractmethod
     def namespace(self) -> Optional[str]:
@@ -57,3 +69,5 @@ class Export(Symbol):
     Exports are a type of Symbol which are declared entry points to the binary.
     """
 
+    def __repr__(self) -> str:
+        return f"<Export {self}>"
