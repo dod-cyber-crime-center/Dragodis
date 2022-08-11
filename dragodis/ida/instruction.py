@@ -91,10 +91,11 @@ class IDAx86Instruction(IDAInstruction, x86Instruction):
     def rep(self) -> Optional[str]:
         if self.data[0] in (0xF2, 0xF3):
             text = self.text.lower()
-            if not text.startswith("rep"):
-                raise AssertionError(f"Expected instruction to start with rep: {text}")
-            rep, _, _ = text.partition(" ")
-            return rep
+            # Existence of byte prefix doesn't necessarily mean we have a rep prefix.
+            # Double confirm by looking at the text itself.
+            if text.startswith("rep"):
+                rep, _, _ = text.partition(" ")
+                return rep
         return None
 
 

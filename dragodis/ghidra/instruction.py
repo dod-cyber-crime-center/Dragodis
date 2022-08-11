@@ -142,10 +142,11 @@ class Ghidrax86Instruction(GhidraInstruction, x86Instruction):
     def rep(self) -> Optional[str]:
         if self.data[0] in (0xF2, 0xF3):
             mnemonic = str(self._instruction.getMnemonicString()).lower()
-            if ".rep" not in mnemonic:
-                raise AssertionError(f"Expected .rep suffix instruction at 0x{self.address:08x}")
-            _, _, rep = mnemonic.partition(".")
-            return rep
+            # Existence of byte prefix doesn't necessarily mean we have a rep prefix.
+            # Double confirm by looking at the text itself.
+            if ".rep" in mnemonic:
+                _, _, rep = mnemonic.partition(".")
+                return rep
         return None
 
 

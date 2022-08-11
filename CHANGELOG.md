@@ -1,6 +1,10 @@
 # Changelog
 
 
+## [Unreleased]
+- Fix issue with non-rep instructions incorrectly throwing an AssertionError.
+
+
 ## [0.5.0] - 2022-08-10
 
 - Fixed getting non-user defined exports in Ghidra.
