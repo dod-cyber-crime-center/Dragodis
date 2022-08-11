@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.5.1] - 2022-08-11
 - Fix issue with non-rep instructions incorrectly throwing an AssertionError.
 
 
@@ -65,7 +65,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.2.0...0.3.0
