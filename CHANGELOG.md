@@ -1,7 +1,7 @@
 # Changelog
 
 
-## [Unreleased]
+## [0.5.2] - 2022-09-13
 - Fixed very slow processing times when pulling segment information in IDA. 
 - Updated segment interface to properly include uninitialized segments. 
 - Uninitialized segments will now return an empty byte string.
@@ -71,7 +71,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.2...HEAD
+[0.5.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.3.0...0.4.0
