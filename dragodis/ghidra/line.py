@@ -59,7 +59,6 @@ class GhidraLine(Line):
         "TerminatedUnicode32": LineType.string32,
         "Alignment": LineType.align,
         # TODO: struct
-        "undefined": LineType.undefined,
     }
     # Inverse _data_type_map with most recent item as value for many-to-one scenerio.
     # (We can do this because Python 3 dictionaries are ordered!)
@@ -184,10 +183,13 @@ class GhidraLine(Line):
         if data_type == "undefined" and self._code_unit.getValue() is None:
             return LineType.unloaded
 
+        if data_type.startswith("undefined"):
+            return LineType.undefined
+
         try:
             return self._data_type_map[data_type]
         except KeyError:
-            RuntimeError(f"Unexpected line type at {hex(self.address)}")
+            raise RuntimeError(f"Unexpected line type at {hex(self.address)}")
 
     @type.setter
     def type(self, new_type: LineType):

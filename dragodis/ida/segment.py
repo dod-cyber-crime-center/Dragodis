@@ -16,7 +16,7 @@ class IDASegment(Segment):
     def __init__(self, ida: IDA, segment_t: "ida_segment.segment_t"):
         self._ida = ida
         self._segment_t = segment_t
-        self._end = None  # caching for end address.
+        self.__real_end = None  # caching for end address.
 
     @property
     def name(self) -> str:
@@ -27,17 +27,34 @@ class IDASegment(Segment):
         return self._segment_t.start_ea
 
     @property
-    def end(self) -> int:
-        if self._end is None:
+    def _real_end(self) -> int:
+        """
+        Returns the address for the real end of the segment without the padding.
+        """
+        if not self.initialized:
+            return self.start
+        if self.__real_end is None:
             # Exclude any overlay of uninitialized bytes from the segment.
             # This is to better match Ghidra's approach of separating uninitalized sections
             # into their own block.
-            # TODO: Support separate segments for uninitialized bytes.
+            ida_bytes = self._ida._ida_bytes
             end = self._segment_t.end_ea
-            while not self._ida._ida_bytes.is_loaded(end - 1):
-                end -= 1
-            self._end = end
-        return self._end
+            if not ida_bytes.is_loaded(end - 1):
+                # Find first initialized item, then move down to find first uninitialized byte from that.
+                end = ida_bytes.prev_inited(end - 1, self._segment_t.start_ea)
+                while ida_bytes.is_loaded(end):
+                    end += 1
+            self.__real_end = end
+        return self.__real_end
+
+    @property
+    def end(self) -> int:
+        return self._segment_t.end_ea
+
+    @property
+    def initialized(self) -> bool:
+        # If first address isn't loaded, then no bytes are.
+        return self._ida._ida_bytes.is_loaded(self._segment_t.start_ea)
 
     @property
     def bit_size(self) -> int:
@@ -57,7 +74,11 @@ class IDASegment(Segment):
 
     @property
     def lines(self) -> Iterable[IDALine]:
-        yield from self._ida.lines(self.start, self.end)
+        if self.initialized:
+            yield from self._ida.lines(self.start, self._real_end)
 
     def open(self) -> IDAMemory:
-        return self._ida.open_memory(self.start, self.end)
+        if not self.initialized:
+            # Empty memory
+            return self._ida.open_memory(self.start, self.start)
+        return self._ida.open_memory(self.start, self._real_end)

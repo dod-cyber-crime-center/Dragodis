@@ -7,6 +7,7 @@ from typing import Iterable, Union, List, TYPE_CHECKING
 
 from dragodis.interface.flat import FlatAPI
 from dragodis.exceptions import NotExistError
+from dragodis import utils
 from .data_type import GhidraDataType
 from .disassembler import GhidraDisassembler, GhidraLocalDisassembler, GhidraRemoteDisassembler
 from .function import GhidraFunction
@@ -18,7 +19,6 @@ from .reference import GhidraReference
 from .segment import GhidraSegment
 from .symbol import GhidraImport, GhidraExport
 from .variable import GhidraGlobalVariable
-from .. import utils
 
 if TYPE_CHECKING:
     from ghidra.program.model.address import Address
@@ -249,8 +249,7 @@ class Ghidra(FlatAPI, GhidraDisassembler):
     def segments(self) -> Iterable[GhidraSegment]:
         memory = self._program.getMemory()
         for memory_block in memory.getBlocks():
-            if memory_block.isInitialized():
-                yield GhidraSegment(self, memory_block)
+            yield GhidraSegment(self, memory_block)
 
     @property
     def imports(self) -> Iterable[GhidraImport]:

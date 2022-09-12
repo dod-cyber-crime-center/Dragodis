@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Iterable
 
 from dragodis.ghidra.line import GhidraLine
@@ -36,6 +37,10 @@ class GhidraSegment(Segment):
         return self._memory_block.getEnd().getOffset() + 1
 
     @property
+    def initialized(self) -> bool:
+        return self._memory_block.isInitialized()
+
+    @property
     def bit_size(self) -> int:
         return self._memory_block.getStart().getSize()
 
@@ -54,7 +59,11 @@ class GhidraSegment(Segment):
 
     @property
     def lines(self) -> Iterable[GhidraLine]:
-        yield from self._ghidra.lines(self.start, self.end)
+        if self.initialized:
+            yield from self._ghidra.lines(self.start, self.end)
 
     def open(self) -> GhidraMemory:
+        if not self.initialized:
+            # Empty memory
+            return GhidraMemory(self._ghidra, self.start, self.start)
         return GhidraMemory(self._ghidra, self.start, self.end)

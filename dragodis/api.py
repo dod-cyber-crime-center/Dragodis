@@ -19,11 +19,12 @@ Disassembler = Union[IDA, Ghidra]
 
 
 def _get_class(name: str = None) -> Type[Disassembler]:
-    # See if we can detect we are inside a disassembler. If so, use that.
-    if utils.in_ida():
-        return IDA
-    if utils.in_ghidra():
-        return Ghidra
+    # If name not provided, see if we can detect we are inside a disassembler. If so, use that.
+    if not name:
+        if utils.in_ida():
+            return IDA
+        if utils.in_ghidra():
+            return Ghidra
 
     disassembler_name = name or os.environ.get("DRAGODIS_DISASSEMBLER", None)
     if not disassembler_name:

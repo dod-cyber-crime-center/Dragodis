@@ -61,6 +61,8 @@ class GhidraMemory(Memory):
         from ghidra.program.model.mem import MemoryAccessException
         # Trim given data to ensure we only write within the window.
         data = data[:self.end - (self.start + self._offset)]
+        if not data:
+            return 0
         address = self._ghidra._to_addr(self.start + self._offset)
         try:
             self._memory.setBytes(address, data)

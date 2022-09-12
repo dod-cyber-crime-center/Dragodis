@@ -4,9 +4,10 @@ Utility functions used throughout the project.
 import contextlib
 from typing import Optional
 
-import pefile
 from elftools.common.exceptions import ELFError
 from elftools.elf import elffile
+import pefile
+import pyhidra
 
 
 class cached_property(property):
@@ -109,7 +110,7 @@ def in_ida() -> bool:
 
 def in_ghidra() -> bool:
     """
-    Detects if we are inside a Ghidra interpreter.
+    Detects if we are inside a Ghidra interpreter with a program loaded.
     """
-    from pyhidra import gui
-    return bool(gui.get_current_interpreter())
+    interpreter = pyhidra.get_current_interpreter()
+    return bool(interpreter and interpreter.currentProgram)

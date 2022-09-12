@@ -143,6 +143,8 @@ class IDAMemory(Memory):
     def write(self, data: bytes) -> int:
         # Trim given data to ensure we only write within the window.
         data = data[:self.end - (self.start + self._offset)]
+        if not data:
+            return 0
 
         address = self.start + self._offset
 

@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [Unreleased]
+- Fixed very slow processing times when pulling segment information in IDA. 
+- Updated segment interface to properly include uninitialized segments. 
+- Uninitialized segments will now return an empty byte string.
+
+
 ## [0.5.1] - 2022-08-11
 - Fix issue with non-rep instructions incorrectly throwing an AssertionError.
 

@@ -69,6 +69,13 @@ class Segment(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
+    def initialized(self) -> bool:
+        """
+        Returns True if we have initialized bytes in the segment.
+        """
+
+    @property
+    @abc.abstractmethod
     def bit_size(self) -> int:
         """
         The addressing mode in number of bits (8, 16, 32, etc).
@@ -98,6 +105,8 @@ class Segment(metaclass=abc.ABCMeta):
 
         Defaults to consuming all of the data stream.
         """
+        if not self.initialized:
+            return b""
         with self.open() as stream:
             return stream.read()
 
@@ -110,6 +119,8 @@ class Segment(metaclass=abc.ABCMeta):
         :return: Raw bytes from the segment
         :raises IOError: If address is not within the segment.
         """
+        if not self.initialized:
+            return b""
         with self.open() as stream:
             stream.seek_address(addr)
             return stream.read(length)

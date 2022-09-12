@@ -67,3 +67,10 @@ def test_write_uninitialized(disassembler):
     with disassembler.open_memory(address, address + 4) as memory:
         with pytest.raises(IOError):
             memory.write(b"\xde\xad\xbe\xef")
+
+
+def test_empty_memory(disassembler):
+    with disassembler.open_memory(0x123, 0x123) as memory:
+        assert memory.tell_address() == 0x123
+        assert memory.read() == b""
+        assert memory.tell_address() == 0x123
