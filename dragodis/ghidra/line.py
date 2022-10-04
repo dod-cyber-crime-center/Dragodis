@@ -121,6 +121,10 @@ class GhidraLine(Line):
 
     @name.setter
     def name(self, new_name: str):
+        # Sanitize name.
+        if new_name:
+            new_name = new_name.replace(" ", "")
+
         # First get the label at the address (if it exists), then we need to either
         # modify/delete the existing label, or create a new label.
         # If we attempt to just call createLabel() Ghidra will stack the label along with

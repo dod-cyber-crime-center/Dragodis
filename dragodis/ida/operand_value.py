@@ -103,7 +103,6 @@ class IDAARMPhrase(Phrase):
             second_reg = self._ida._ida_arm.secreg(self._op_t)  # pulling the R2
             return IDARegister(self._ida, second_reg, self._width)
 
-
         # [R1, #1]
         else:
             offset = self._op_t.addr

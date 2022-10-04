@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [Unreleased]
+- Fixed logging for teleported functions using IDA.
+- Fixed incorrectly getting unsigned phrase offsets using Ghidra.
+- Fixed `stack_delta` calculation in Ghidra when an instruction has a call fixup.
+- Added translation table in README.
+
+
 ## [0.5.2] - 2022-09-13
 - Fixed very slow processing times when pulling segment information in IDA. 
 - Updated segment interface to properly include uninitialized segments. 

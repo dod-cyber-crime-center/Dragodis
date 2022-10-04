@@ -89,16 +89,21 @@ class IDALine(Line):
 
     @name.setter
     def name(self, new_name: Optional[str]):
-        # TODO: determine if we should be using get_name() or force_name()
-        success = self._ida._ida_name.set_name(
-            self.address, new_name or "", self._ida._ida_name.SN_NOCHECK)
+        flags = self._ida._ida_name.SN_NOCHECK
+        if new_name:
+            # only force if not clearing.
+            flags |= self._ida._ida_name.SN_FORCE
+        else:
+            new_name = ""
+
+        success = self._ida._ida_name.set_name(self.address, new_name, flags)
         if not success:
             raise ValueError(f"Failed to set {hex(self.address)} to {new_name}")
         self._name = None  # clear cache
 
         # If we reset the name for a string we need to undefine it
         # so IDA gives us the appropriate auto-generated name.
-        # Otherwise a data item original named like "aHello" will be reset to "asc_40C130"
+        # Otherwise, a data item original named like "aHello" will be reset to "asc_40C130"
         if not new_name and self.is_string:
             type_ = self.type
             self.undefine()
@@ -273,7 +278,7 @@ class IDALine(Line):
             raise TypeError(f"Failed to set new type {repr(new_type)} at {hex(self.address)}")
 
     def undefine(self):
-        if self.type == LineType.undefined:
+        if self.type in [LineType.undefined, LineType.unloaded]:
             return
         # TODO: kordesii's EncryptedString called with like so. Should we be doing that here?
         #   idc.del_items(self.start_ea, idc.DELIT_SIMPLE, len(self.decoded_data))

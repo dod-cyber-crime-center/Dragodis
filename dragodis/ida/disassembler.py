@@ -84,6 +84,7 @@ class IDADisassembler(BackendDisassembler):
     """
     name = BACKEND_IDA
 
+    _BADADDR: int
     _idaapi: idaapi
     _idc: idc
     _idautils: idautils
@@ -289,6 +290,9 @@ class IDARemoteDisassembler(IDADisassembler):
         # Redirect output.
         self._bridge.modules.sys.stderr = sys.stderr
         self._bridge.modules.sys.stdout = sys.stdout
+        remote_logger = self._bridge.modules.logging.getLogger()
+        remote_logger.parent = logger
+        remote_logger.setLevel(logger.getEffectiveLevel())
 
         # Import IDA modules.
         self._idaapi: idaapi = _Cached(self._bridge.root.getmodule("idaapi"))
@@ -428,6 +432,10 @@ class IDARemoteDisassembler(IDADisassembler):
             return
 
         logger.debug("Shutting down IDA Bridge server...")
+
+        # Before we close the bridge, remove connection to local logger to prevent logs being sent out afterwards.
+        self._bridge.modules.logging.getLogger().parent = None
+
         self._bridge.close()
         self._root = None
         self._bridge = None

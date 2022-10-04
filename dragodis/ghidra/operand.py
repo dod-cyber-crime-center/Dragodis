@@ -162,7 +162,7 @@ class GhidraOperand(Operand):
             else:
                 return GhidraPhrase(
                     base=GhidraRegister(ops[0]),
-                    offset=ops[1].getValue(),
+                    offset=ops[1].getSignedValue(),
                 )
 
         # [ECX + EDX*0x1]
@@ -179,7 +179,7 @@ class GhidraOperand(Operand):
                 base=GhidraRegister(ops[0]),
                 index=GhidraRegister(ops[1]),
                 scale=ops[2].getValue(),
-                offset=ops[3].getValue(),
+                offset=ops[3].getSignedValue(),
             )
 
         # [r3,r2]
@@ -236,6 +236,13 @@ class GhidraOperand(Operand):
                     return 16
                 manager = self._ghidra._program.getDataTypeManager()
                 data_type = manager.getDataType(f"/{data_type_name}")
+                if not data_type:
+                    # If we fail to get the data type, try again using the builtins.
+                    from ghidra.program.model.data import BuiltInDataTypeManager
+                    manager = BuiltInDataTypeManager.getDataTypeManager()
+                    data_type = manager.getDataType(f"/{data_type_name}")
+                    if not data_type:
+                        raise TypeError(f"Failed to determine referenced data type for operand {self.text}")
                 return data_type.getLength()
             else:
                 value = self.value

@@ -103,15 +103,21 @@ class GhidraInstruction(Instruction):
     @property
     def stack_delta(self) -> int:
         delta = 0
-        flowType = self._instruction.getFlowType()
-        if flowType.isCall() and flowType.isUnConditional():
+        flow_type = self._instruction.getFlowType()
+        if flow_type.isCall() and flow_type.isUnConditional():
             # the delta we are looking for is actually stored in the function and not the instruction
             flows = self._instruction.getFlows()
             if len(flows) == 1:
                 func = self._ghidra._flatapi.getFunctionAt(flows[0])
-                delta = func.getStackPurgeSize()
+                # If function has a call fixup, getStackPurgeSize() will be wrong.
+                # In this case, we will just calculate from the next instruction's stack depth.
+                if func.getCallFixup():
+                    next_insn = self.line.next.instruction
+                    delta = next_insn.stack_depth - self.stack_depth
+                else:
+                    delta = func.getStackPurgeSize()
             else:
-                logger.warn(f'unexpected number of flows: {flows}')
+                logger.warning(f'unexpected number of flows: {flows}')
         else:
             from ghidra.app.cmd.function import CallDepthChangeInfo
             addr = self._instruction.getAddress()
@@ -120,7 +126,6 @@ class GhidraInstruction(Instruction):
             delta = info.getInstructionStackDepthChange(self._instruction)
             if delta == func.UNKNOWN_STACK_DEPTH_CHANGE:
                 delta = 0
-        logger.debug(f'stack delta at {self._instruction.getAddress()}: {delta}')
         return delta
 
 
