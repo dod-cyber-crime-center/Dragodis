@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.6.0] - 2022-11-22
 - Tested for IDA 8.0
 - Changes to `Import` objects to handle changes in IDA 8.0
   - Added `Import.thunk_address` property to obtain an import's address to a thunk function if it exists.
@@ -90,7 +90,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.3...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.3...0.6.0
 [0.5.3]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.0...0.5.1
