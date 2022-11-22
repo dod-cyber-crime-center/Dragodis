@@ -14,7 +14,7 @@ from dragodis.exceptions import NotExistError
 
 if TYPE_CHECKING:
     import ida_typeinf
-    from dragodis import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class IDAFunctionSignature(FunctionSignature):
     }
     _cc_map_inv = {name: opcode for opcode, name in _cc_map.items()}
 
-    def __init__(self, ida: IDA, address: int):
+    def __init__(self, ida: IDAFlatAPI, address: int):
         self._address = address
         self._ida = ida
         try:

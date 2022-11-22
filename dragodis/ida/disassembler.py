@@ -19,6 +19,7 @@ import uuid
 
 import rpyc
 from rpyc.core.stream import NamedPipeStream, SocketStream
+from rpyc.utils import factory
 
 from dragodis.exceptions import DragodisError, NotInstalledError
 from dragodis.interface import BackendDisassembler
@@ -116,7 +117,7 @@ class IDALocalDisassembler(IDADisassembler):
     Backend used when we are natively in the IDA interpreter.
     """
 
-    def __init__(self, input_path=None):
+    def __init__(self, input_path=None, **unused):
         import idc
         super().__init__(idc.get_input_file_path())
 
@@ -184,7 +185,12 @@ class IDARemoteDisassembler(IDADisassembler):
     Backend disassembler when we are remotely accessing IDA through rpyc.
     """
 
-    def __init__(self, input_path, is_64_bit=None, ida_path=None):
+    _rpyc_config = {
+        # Increasing timeout to give IDA more time to analyze larger files.
+        "sync_request_timeout": 60
+    }
+
+    def __init__(self, input_path, is_64_bit=None, ida_path=None, timeout=None, **unused):
         """
         Initializes IDA disassembler.
 
@@ -193,6 +199,7 @@ class IDARemoteDisassembler(IDADisassembler):
             If left as None, this will be determined by analyzing the input file.
         :param ida_path: Path to IDA directory.
             This may also be set using the environment variable IDA_INSTALL_DIR
+        :param timeout: Number of seconds to wait for remote results. (defaults to 60)
         """
         super().__init__(input_path)
         self._ida_path = ida_path or os.environ.get("IDA_INSTALL_DIR", os.environ.get("IDA_DIR"))
@@ -202,6 +209,9 @@ class IDARemoteDisassembler(IDADisassembler):
                 "Please provide it during instantiation or set the IDA_INSTALL_DIR environment variable."
             )
         self._script_path = ida_server.__file__
+        if timeout is not None:
+            self._rpyc_config = dict(self._rpyc_config)
+            self._rpyc_config["sync_request_timeout"] = timeout
 
         # Determine if 64 bit.
         if is_64_bit is None:
@@ -325,8 +335,7 @@ class IDARemoteDisassembler(IDADisassembler):
         self._ida_intel: ida_intel = _Cached(self._bridge.root.getmodule("ida_intel"))
         self._ida_helpers: ida_helpers = _Cached(self._bridge.root.getmodule("ida_helpers"))
 
-    @staticmethod
-    def unix_connect(socket_path, retry=10) -> rpyc.Connection:
+    def unix_connect(self, socket_path, retry=10) -> rpyc.Connection:
         """
         Connects to bridge using unix socket.
         """
@@ -334,7 +343,7 @@ class IDARemoteDisassembler(IDADisassembler):
             try:
                 logger.debug(f"Connecting to socket path: {socket_path}, try {i + 1}")
                 stream = SocketStream.unix_connect(socket_path)
-                link = rpyc.classic.connect_stream(stream)
+                link = factory.connect_stream(stream, rpyc.classic.SlaveService, config=self._rpyc_config)
                 link.ping()
                 logger.debug(f"Connected to {socket_path}")
                 return link
@@ -344,8 +353,7 @@ class IDARemoteDisassembler(IDADisassembler):
 
         raise DragodisError(f"Could not connect to {socket_path} after {retry} tries.")
 
-    @staticmethod
-    def win_connect(pipe_name, retry=10) -> rpyc.Connection:
+    def win_connect(self, pipe_name, retry=10) -> rpyc.Connection:
         """
         Connects to bridge using Windows named pipe.
         """
@@ -355,7 +363,7 @@ class IDARemoteDisassembler(IDADisassembler):
             try:
                 logger.debug(f"Connecting to pipe: {pipe_name}, try {i + 1}")
                 stream = NamedPipeStream.create_client(pipe_name)
-                link = rpyc.classic.connect_stream(stream)
+                link = factory.connect_stream(stream, rpyc.classic.SlaveService, config=self._rpyc_config)
                 link.ping()
                 logger.debug(f"Connected to {pipe_name}")
                 return link

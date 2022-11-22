@@ -24,12 +24,12 @@ import idautils
 logger = logging.getLogger(__name__)
 
 
-def iter_imports() -> Iterable[Tuple[int, str, str]]:
+def iter_imports() -> Iterable[Tuple[int, Optional[int], str, str]]:
     """
     Iterates the imports, returning the address function name and namespace
     for the import.
 
-    :yields: (address, func_name, namespace)
+    :yields: (address, thunk_address or None, func_name, namespace)
     """
     for i in range(ida_nalt.get_import_module_qty()):
         namespace = ida_nalt.get_import_module_name(i)
@@ -40,26 +40,28 @@ def iter_imports() -> Iterable[Tuple[int, str, str]]:
             if name:
                 # Name will include a "__imp_" prefix if the import is accessed through
                 # a thunk function.
-                # Pull the address of the thunk function instead.
+                # Pull the address of the thunk function as well.
+                thunk_addr = None
                 raw_name = ida_name.get_name(addr)
                 if raw_name.startswith("__imp_"):
                     for xref in idautils.XrefsTo(addr):
                         func = ida_funcs.get_func(xref.frm)
                         if func and func.flags & ida_funcs.FUNC_THUNK:
-                            addr = func.start_ea
-                            name = ida_funcs.get_func_name(addr)
+                            # Pull thunk address and swap name for a better one without the "__imp_" prefix.
+                            thunk_addr = func.start_ea
+                            name = ida_funcs.get_func_name(thunk_addr)
                             break
                     else:
                         raise RuntimeError(f"Failed to find a thunk for {name} at 0x{addr:08X}")
 
-                entries.append((addr, name))
+                entries.append((addr, thunk_addr, name))
 
             return True  # continue enumeration
 
         ida_nalt.enum_import_names(i, callback)
 
-        for addr, name in entries:
-            yield addr, name, namespace
+        for addr, thunk_addr, name in entries:
+            yield addr, thunk_addr, name, namespace
 
 
 def iter_exports() -> Iterable[Tuple[int, str]]:
@@ -179,12 +181,8 @@ def get_operands(address: int) -> List[Tuple[int, ida_ua.op_t]]:
     for index, op in enumerate(ops):
         if op.type == o_void:
             break  # no more operands
-        # IDA will sometimes create hidden or "fake" operands.
-        # These are there to represent things like an implicit EAX register.
-        # To help avoid confusion to the opcode developer, these fake operands will not be included.
-        # TODO: Should we be including hidden operands?
-        if op.shown():
-            ret.append((index, op))
+
+        ret.append((index, op))
 
     return ret
 

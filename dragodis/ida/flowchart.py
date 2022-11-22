@@ -5,13 +5,13 @@ from typing import Iterable, TYPE_CHECKING
 from dragodis.interface import Flowchart, BasicBlock, FlowType
 
 if TYPE_CHECKING:
-    from dragodis.ida import IDA
+    from dragodis.ida.flat import IDAFlatAPI
     import ida_gdl
 
 
 class IDABasicBlock(BasicBlock):
 
-    def __init__(self, ida: IDA, block: "ida_gdl.BasicBlock"):
+    def __init__(self, ida: IDAFlatAPI, block: "ida_gdl.BasicBlock"):
         super().__init__(ida)
         self._ida = ida
         self._block = block
@@ -49,7 +49,7 @@ class IDABasicBlock(BasicBlock):
 
 class IDAFlowchart(Flowchart):
 
-    def __init__(self, ida: IDA, flowchart: "ida_gdl.FlowChart"):
+    def __init__(self, ida: IDAFlatAPI, flowchart: "ida_gdl.FlowChart"):
         self._ida = ida
         self._flowchart = flowchart
 

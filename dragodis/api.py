@@ -6,16 +6,30 @@ from __future__ import annotations
 # Import available disassemblers so they get registered.
 import os
 import pathlib
-from typing import Union, Type
+from typing import Union, Type, TYPE_CHECKING
 
-from . import utils
+from dragodis import utils
+from dragodis.ghidra import GhidraLocal, GhidraRemote
+from dragodis.ida import IDALocal, IDARemote
+from dragodis.interface import FlatAPI
 
-from .ghidra import Ghidra
-from .ida import IDA
+
+IDA = IDALocal if utils.in_ida() else IDARemote
+
+def Ghidra(*args, **kwargs):
+    # Need to dynamically provide Ghidra disassembler since detection can be wrong if
+    # this module gets imported prematurely by a plugin before pyhidra sets up the interpreter.
+    if utils.in_ghidra():
+        return GhidraLocal(*args, **kwargs)
+    else:
+        return GhidraRemote(*args, **kwargs)
+
+if TYPE_CHECKING:
+    Ghidra = GhidraLocal if utils.in_ghidra() else GhidraRemote
 
 
-# Generic typing for any dragodis supported Disassembler.
-Disassembler = Union[IDA, Ghidra]
+# Expose flat api when user wants to do typing.
+Disassembler = FlatAPI
 
 
 def _get_class(name: str = None) -> Type[Disassembler]:
@@ -44,7 +58,7 @@ def _get_class(name: str = None) -> Type[Disassembler]:
 def open_program(
         file_path: Union[str, pathlib.Path],
         disassembler: str = None,
-        **disassembler_args
+        **config
 ) -> Disassembler:
     """
     Opens given file in the given disassembler.
@@ -52,10 +66,11 @@ def open_program(
     :param file_path: Path to binary file to disassemble.
     :param disassembler: Name of disassembler to use.
         (Defaults to disassembler provided in DRAGODIS_DISASSEMBLER environment variable.)
-    :param *disassembler_args: Arguments to pass to disassembler during instantiation.
+    :param config: Arguments to pass to disassembler during instantiation.
+        Non-applicable arguments will be ignored.
 
     :raises NotInstalledError: If the specified disassembler has not been installed.
     :raises ValueError: If the specified disassembler is not supported.
     """
     file_path = pathlib.Path(file_path)
-    return _get_class(disassembler)(file_path, **disassembler_args)
+    return _get_class(disassembler)(file_path, **config)

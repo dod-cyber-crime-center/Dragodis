@@ -7,12 +7,12 @@ from dragodis.interface.symbol import Symbol, Import, Export
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraSymbol(Symbol):
 
-    def __init__(self, ghidra: Ghidra, symbol: "ghidra.program.model.symbol.Symbol"):
+    def __init__(self, ghidra: GhidraFlatAPI, symbol: "ghidra.program.model.symbol.Symbol"):
         self._ghidra = ghidra
         self._symbol = symbol
 
@@ -33,22 +33,34 @@ class GhidraSymbol(Symbol):
 class GhidraImport(Import, GhidraSymbol):
 
     @property
+    def _linkage_address(self) -> "ghidra.program.model.address.GenericAddress":
+        from ghidra.app.nav import NavigationUtils
+        external_address = self._symbol.getAddress()
+        addresses = NavigationUtils.getExternalLinkageAddresses(self._ghidra._program, external_address)
+        if len(addresses) > 1:
+            raise RuntimeError(f"Expected single external linkage address. Got {len(addresses)}")
+        return addresses[0]
+
+    @property
     def address(self) -> int:
-        # Ghidra separates import symbols from the actual address to reference the
-        # function with a reference.
-        # Therefore we need to iterate the references and look for a thunk or data
-        # type references. (but prefer the thunk over data if we find both)
+        return self._linkage_address.getOffset()
+
+    @property
+    def thunk_address(self) -> Optional[int]:
         from ghidra.program.model.symbol import RefType
-        address = None
-        for ref in self._symbol.getReferences():
-            ref_type = ref.getReferenceType()
-            if ref_type == RefType.DATA and not address:
-                address = ref.getFromAddress().getOffset()
-            elif ref_type == RefType.THUNK:
-                address = ref.getFromAddress().getOffset()
-        if not address:
-            raise RuntimeError(f"Failed to get address for {self._symbol}")
-        return address
+        symbol = self._ghidra._flatapi.getSymbolAt(self._linkage_address)
+        for ref in symbol.getReferences():
+            if ref.getReferenceType() == RefType.THUNK:
+                return ref.getFromAddress().getOffset()
+
+        # Before thinking we have no thunk function, try again by looking for standard
+        # references from functions marked as being a thunk.
+        # Sometimes Ghidra doesn't mark its references types correctly.
+        for ref in symbol.getReferences():
+            if ref.getReferenceType() in (RefType.COMPUTED_CALL, RefType.INDIRECTION):
+                func = self._ghidra._flatapi.getFunctionContaining(ref.getFromAddress())
+                if func.isThunk():
+                    return func.getEntryPoint().getOffset()
 
     @property
     def namespace(self) -> Optional[str]:
@@ -59,11 +71,30 @@ class GhidraImport(Import, GhidraSymbol):
 
     @property
     def references_to(self) -> Iterable[GhidraReference]:
-        address = self.address
-        for ref in super().references_to:
+        thunk_address = self.thunk_address
+        if thunk_address:
+            thunk_function = self._ghidra.get_function(thunk_address)
+        else:
+            thunk_function = None
+
+        # First pull references from original external symbol.
+        from ghidra.program.model.symbol import RefType
+        for ref in self._symbol.getReferences():
+            if (
+                ref.getReferenceType() != RefType.THUNK
+                and ref.getFromAddress() != self._linkage_address
+                and not (thunk_function and ref.getFromAddress().getOffset() in thunk_function)
+            ):
+                yield GhidraReference(self._ghidra, ref)
+
+        # Pull references to original address pointer.
+        for ref in self._ghidra.references_to(self.address):
             # Ignore self-references to thunk function.
-            if ref.from_address != address:
+            if ref.from_address != thunk_address:
                 yield ref
+        # Also pull references to thunk function.
+        if thunk_address:
+            yield from self._ghidra.references_to(thunk_address)
 
 
 class GhidraExport(Export, GhidraSymbol):

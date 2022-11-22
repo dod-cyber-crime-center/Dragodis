@@ -10,12 +10,12 @@ from dragodis.interface.function_argument_location import (
 
 if TYPE_CHECKING:
     import ida_typeinf
-    from dragodis import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 class IDAArgumentLocation(ArgumentLocation):
 
-    def __init__(self, ida: IDA, argloc: "ida_typeinf.argloc_t", size: int):
+    def __init__(self, ida: IDAFlatAPI, argloc: "ida_typeinf.argloc_t", size: int):
         self._ida = ida
         self._argloc = argloc
         self._size = size

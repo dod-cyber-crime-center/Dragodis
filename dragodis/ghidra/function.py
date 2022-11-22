@@ -12,12 +12,12 @@ from dragodis.interface import Function, CommentType
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis.ghidra.flat import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraFunction(Function):
 
-    def __init__(self, ghidra: Ghidra, function: "ghidra.program.model.listing.Function"):
+    def __init__(self, ghidra: GhidraFlatAPI, function: "ghidra.program.model.listing.Function"):
         super().__init__(ghidra)
         self._ghidra = ghidra
         self._function = function

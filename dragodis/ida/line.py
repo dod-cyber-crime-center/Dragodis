@@ -9,7 +9,7 @@ from dragodis.ida.instruction import IDAInstruction
 from dragodis.interface import Line, LineType, CommentType
 
 if TYPE_CHECKING:
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class IDALine(Line):
 
-    def __init__(self, ida: IDA, addr: int):
+    def __init__(self, ida: IDAFlatAPI, addr: int):
         super().__init__(ida)
         self._ida = ida
         if addr < 0:

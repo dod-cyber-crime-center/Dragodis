@@ -1,2 +1,1 @@
-
-from .flat import Ghidra
+from .flat import GhidraLocal, GhidraRemote

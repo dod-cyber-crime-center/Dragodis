@@ -9,7 +9,7 @@ from dragodis.interface.operand_value import (
 
 if TYPE_CHECKING:
     import ida_ua
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 class IDAImmediate(Immediate):
@@ -22,7 +22,7 @@ class IDAMemoryReference(MemoryReference):
 
 class IDARegister(Register):
 
-    def __init__(self, ida: IDA, reg: int, width: int):
+    def __init__(self, ida: IDAFlatAPI, reg: int, width: int):
         """
         :param ida: The IDA disassembler.
         :param reg: Internal register number as defined in the IDA processor module.
@@ -58,7 +58,7 @@ class IDAARMPhrase(Phrase):
         [R11,#-8]
     """
 
-    def __init__(self, ida: IDA, insn_t: "ida_ua.insn_t", op_t: "ida_ua.op_t"):
+    def __init__(self, ida: IDAFlatAPI, insn_t: "ida_ua.insn_t", op_t: "ida_ua.op_t"):
         self._ida = ida
         self._insn_t = insn_t
         self._op_t = op_t
@@ -120,7 +120,7 @@ class IDAx86Phrase(Phrase):
         [ebp+4]
     """
 
-    def __init__(self, ida: IDA, insn_t: "ida_ua.insn_t", op_t: "ida_ua.op_t"):
+    def __init__(self, ida: IDAFlatAPI, insn_t: "ida_ua.insn_t", op_t: "ida_ua.op_t"):
         self._ida = ida
         self._insn_t = insn_t
         self._op_t = op_t

@@ -7,7 +7,6 @@ from typing import Iterable, Union, List, TYPE_CHECKING
 
 from dragodis.interface.flat import FlatAPI
 from dragodis.exceptions import NotExistError
-from dragodis import utils
 from .data_type import GhidraDataType
 from .disassembler import GhidraDisassembler, GhidraLocalDisassembler, GhidraRemoteDisassembler
 from .function import GhidraFunction
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
     import ghidra.program.model.listing
 
 
-class Ghidra(FlatAPI, GhidraDisassembler):
+class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
 
     def _to_addr(self, addr: int) -> "Address":
         """
@@ -283,11 +282,9 @@ class Ghidra(FlatAPI, GhidraDisassembler):
             service.close()
 
 
-# Set proper Disassembler class based on whether we are inside or outside Ghidra.
-if utils.in_ghidra():
-    class Ghidra(Ghidra, GhidraLocalDisassembler):
-        ...
-else:
-    class Ghidra(Ghidra, GhidraRemoteDisassembler):
-        ...
+class GhidraLocal(GhidraFlatAPI, GhidraLocalDisassembler):
+    ...
 
+
+class GhidraRemote(GhidraFlatAPI, GhidraRemoteDisassembler):
+    ...

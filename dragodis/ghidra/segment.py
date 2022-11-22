@@ -9,12 +9,12 @@ from dragodis.interface import Segment, SegmentType, SegmentPermission
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis.ghidra import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraSegment(Segment):
 
-    def __init__(self, ghidra: Ghidra, memory_block: "ghidra.program.model.mem.MemoryBlock"):
+    def __init__(self, ghidra: GhidraFlatAPI, memory_block: "ghidra.program.model.mem.MemoryBlock"):
         self._ghidra = ghidra
         self._memory_block = memory_block
 

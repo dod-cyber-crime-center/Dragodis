@@ -6,12 +6,12 @@ from dragodis.interface import Reference, ReferenceType
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis.ghidra.flat import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraReference(Reference):
 
-    def __init__(self, ghidra: Ghidra, reference: "ghidra.program.model.symbol.Reference"):
+    def __init__(self, ghidra: GhidraFlatAPI, reference: "ghidra.program.model.symbol.Reference"):
         self._ghidra = ghidra
         self._reference = reference
 

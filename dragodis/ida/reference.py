@@ -8,7 +8,7 @@ from dragodis.interface import Reference, ReferenceType
 
 if TYPE_CHECKING:
     import ida_xref
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 # noinspection PyPropertyAccess
@@ -30,7 +30,7 @@ class IDAReference(Reference):
         21: ReferenceType.ordinary_flow,        # ida_xref.fl_F
     }
 
-    def __init__(self, ida: IDA, xref: "ida_xref.xrefblk_t"):
+    def __init__(self, ida: IDAFlatAPI, xref: "ida_xref.xrefblk_t"):
         self._ida = ida
         self._xref = xref
 

@@ -63,6 +63,13 @@ class Import(Symbol):
         Which is usually the name of the DLL.
         """
 
+    @property
+    @abc.abstractmethod
+    def thunk_address(self) -> Optional[int]:
+        """
+        The address for the thunk function if it exists.
+        """
+
 
 class Export(Symbol):
     """

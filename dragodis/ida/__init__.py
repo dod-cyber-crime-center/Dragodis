@@ -1,2 +1,1 @@
-
-from .flat import IDA
+from .flat import IDALocal, IDARemote

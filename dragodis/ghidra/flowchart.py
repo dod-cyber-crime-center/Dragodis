@@ -10,12 +10,12 @@ from dragodis.interface import Flowchart, BasicBlock, FlowType
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis.ghidra import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraBasicBlock(BasicBlock):
 
-    def __init__(self, ghidra: Ghidra, block: "ghidra.program.model.block.CodeBlockImpl"):
+    def __init__(self, ghidra: GhidraFlatAPI, block: "ghidra.program.model.block.CodeBlockImpl"):
         super().__init__(ghidra)
         self._ghidra = ghidra
         self._block = block
@@ -70,7 +70,7 @@ class GhidraBasicBlock(BasicBlock):
 
 class GhidraFlowchart(Flowchart):
 
-    def __init__(self, ghidra: Ghidra, address_set: "ghidra.program.model.address.AddressSetView"):
+    def __init__(self, ghidra: GhidraFlatAPI, address_set: "ghidra.program.model.address.AddressSetView"):
         self._ghidra = ghidra
         self._address_set = address_set
 

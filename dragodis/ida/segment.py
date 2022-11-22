@@ -8,12 +8,12 @@ from dragodis.interface import Segment, SegmentPermission
 
 if TYPE_CHECKING:
     import ida_segment
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 class IDASegment(Segment):
 
-    def __init__(self, ida: IDA, segment_t: "ida_segment.segment_t"):
+    def __init__(self, ida: IDAFlatAPI, segment_t: "ida_segment.segment_t"):
         self._ida = ida
         self._segment_t = segment_t
         self.__real_end = None  # caching for end address.

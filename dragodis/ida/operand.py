@@ -15,7 +15,7 @@ from dragodis.interface.types import ARMShiftType
 
 if TYPE_CHECKING:
     import ida_ua
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
     from dragodis.ida.instruction import IDAInstruction
 
 
@@ -33,7 +33,7 @@ class IDAOperand(Operand):
         7: OperandType.code,          # o_near
     }
 
-    def __init__(self, instruction: IDAInstruction, ida: IDA, addr: int, index: int, op_t: "ida_ua.op_t"):
+    def __init__(self, instruction: IDAInstruction, ida: IDAFlatAPI, addr: int, index: int, op_t: "ida_ua.op_t"):
         super().__init__(instruction)
         self._ida = ida
         self._addr = addr
@@ -53,7 +53,14 @@ class IDAOperand(Operand):
         # Get operand text and then remove the color tags.
         # (Doing same thing as idc.print_operand())
         text = self._ida._ida_ua.print_operand(self.address, self.index)
-        return self._ida._ida_lines.tag_remove(text)
+        if text:
+            return self._ida._ida_lines.tag_remove(text)
+
+        # No text indicates an implied operand, which *should* be a register but could be a phrase
+        _value = self.value
+        if isinstance(_value, (IDARegister, IDAx86Phrase)):
+            return str(_value)
+        raise AssertionError(f"Expected operand to be register or phrase, got: {_value!r}")
 
     @property
     def type(self) -> OperandType:
@@ -74,7 +81,8 @@ class IDAOperand(Operand):
         elif operand_type == OperandType.register:  # o_reg
             return IDARegister(self._ida, self._op_t.reg, self.width)
         elif operand_type == OperandType.immediate:  # o_imm
-            value = self._op_t.value
+            # value = self._op_t.value
+            value = self._ida._idc.get_operand_value(self._addr, self._index)
             # Need to mask off the value based on width since IDA will sometimes
             # include ff bytes in the front causing the value to be incorrect.
             value &= (1 << (8 * self.width)) - 1

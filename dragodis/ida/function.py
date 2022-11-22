@@ -9,7 +9,7 @@ from dragodis.interface import Function, CommentType
 
 if TYPE_CHECKING:
     import ida_funcs
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class IDAFunction(Function):
     # Cache of function types we have computed.
     _func_types = set()
 
-    def __init__(self, ida: IDA, func_t: "ida_funcs.func_t"):
+    def __init__(self, ida: IDAFlatAPI, func_t: "ida_funcs.func_t"):
         super().__init__(ida)
         self._ida = ida
         self._func_t = func_t

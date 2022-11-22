@@ -28,6 +28,9 @@ class GhidraStackLocation(StackLocation, GhidraArgumentLocation):
         # the first parameter at offset +4
         # Therefore, we will subtract the return address size if applicable.
         calling_conv = self._function.getCallingConvention()
+        if calling_conv is None:
+            fman = self._function.getProgram().getFunctionManager()
+            calling_conv = fman.getDefaultCallingConvention()
         return self._storage.getStackOffset() - calling_conv.getStackshift()
 
 

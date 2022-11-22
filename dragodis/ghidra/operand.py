@@ -16,7 +16,7 @@ from dragodis.ghidra.operand_value import (
 
 # Used for typing.
 if TYPE_CHECKING:
-    from dragodis import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
     from dragodis.ghidra.instruction import GhidraInstruction
     import ghidra
     import ghidra.app.plugin.processors.generic.Operand
@@ -51,7 +51,7 @@ class GhidraOperandType(IntFlag):
 
 class GhidraOperand(Operand):
 
-    def __init__(self, ghidra: Ghidra, instruction: GhidraInstruction, index: int):
+    def __init__(self, ghidra: GhidraFlatAPI, instruction: GhidraInstruction, index: int):
         super().__init__(instruction)
         self._ghidra = ghidra
         # Ghidra doesn't necessarily have an "Operand" type.
@@ -205,6 +205,24 @@ class GhidraOperand(Operand):
 
         raise ValueError(f"Unknown operand types: {op_types!r}")
 
+    def _get_referenced_data_size(self, text: str) -> int:
+        """
+        If operand text is in a "* ptr [..]" format pull the data type name and use that to get the true size.
+        """
+        data_type_name = text.split()[0]
+        if data_type_name == "xmmword":  # xmmword isn't an actual data type.
+            return 16
+        manager = self._ghidra._program.getDataTypeManager()
+        data_type = manager.getDataType(f"/{data_type_name}")
+        if not data_type:
+            # If we fail to get the data type, try again using the builtins.
+            from ghidra.program.model.data import BuiltInDataTypeManager
+            manager = BuiltInDataTypeManager.getDataTypeManager()
+            data_type = manager.getDataType(f"/{data_type_name}")
+            if not data_type:
+                raise TypeError(f"Failed to determine referenced data type for operand {self.text}")
+        return data_type.getLength()
+
     @property
     def width(self) -> int:
         op_type = self.type
@@ -216,10 +234,18 @@ class GhidraOperand(Operand):
             reg = self.value
             return reg.bit_width // 8
 
-        elif op_type in (OperandType.immediate, OperandType.memory):
+        elif op_type in (OperandType.immediate, OperandType.memory, OperandType.code):
             scalar = self._instruction.getScalar(self.index)
             if scalar:
                 return scalar.bitLength() // 8
+
+            # We may have a memory address which is a pointer to a standard data type.
+            # Pull out the data type's size.
+            if op_type == OperandType.memory:
+                text = self.text
+                if "ptr" in text:
+                    return self._get_referenced_data_size(text)
+
             # Getting standard size of an address.
             addr = self._instruction.getAddress()
             if addr:
@@ -231,19 +257,7 @@ class GhidraOperand(Operand):
             # TODO: Figure out if there is a more sane way to do this.
             text = self.text
             if "ptr" in text:
-                data_type_name = text.split()[0]
-                if data_type_name == "xmmword":  # xmmword isn't an actual data type.
-                    return 16
-                manager = self._ghidra._program.getDataTypeManager()
-                data_type = manager.getDataType(f"/{data_type_name}")
-                if not data_type:
-                    # If we fail to get the data type, try again using the builtins.
-                    from ghidra.program.model.data import BuiltInDataTypeManager
-                    manager = BuiltInDataTypeManager.getDataTypeManager()
-                    data_type = manager.getDataType(f"/{data_type_name}")
-                    if not data_type:
-                        raise TypeError(f"Failed to determine referenced data type for operand {self.text}")
-                return data_type.getLength()
+                return self._get_referenced_data_size(text)
             else:
                 value = self.value
                 base_reg = value.base

@@ -10,7 +10,7 @@ from dragodis.interface.instruction import (
 )
 
 if TYPE_CHECKING:
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 # TODO: Perhaps have a local helper utility that pulls and caches all the instruction
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class IDAInstruction(Instruction):
     _Operand = IDAOperand
 
-    def __init__(self, ida: IDA, addr: int):
+    def __init__(self, ida: IDAFlatAPI, addr: int):
         super().__init__(ida)
         self._ida = ida
         self._addr = addr

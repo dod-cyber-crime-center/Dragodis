@@ -6,13 +6,13 @@ from dragodis.ghidra.variable import GhidraStackVariable
 from dragodis.interface.stack import StackFrame
 
 if TYPE_CHECKING:
-    from dragodis.ghidra import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
     import ghidra
 
 
 class GhidraStackFrame(StackFrame):
 
-    def __init__(self, ghidra: Ghidra, frame: "ghidra.program.model.listing.StackFrame"):
+    def __init__(self, ghidra: GhidraFlatAPI, frame: "ghidra.program.model.listing.StackFrame"):
         self._ghidra = ghidra
         self._frame = frame
 

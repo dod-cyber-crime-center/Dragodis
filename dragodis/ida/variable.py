@@ -6,14 +6,14 @@ from dragodis.interface.variable import StackVariable, GlobalVariable
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from dragodis import IDA
+    from dragodis.ida.flat import IDAFlatAPI
     from dragodis.ida.stack import IDAStackFrame
     import ida_struct
 
 
 class IDAGlobalVariable(GlobalVariable):
 
-    def __init__(self, ida: IDA, address: int):
+    def __init__(self, ida: IDAFlatAPI, address: int):
         self._ida = ida
         self._address = address
 
@@ -40,7 +40,7 @@ class IDAGlobalVariable(GlobalVariable):
 
 class IDAStackVariable(StackVariable):
 
-    def __init__(self, ida: IDA, frame: IDAStackFrame, member: "ida_struct.member_t"):
+    def __init__(self, ida: IDAFlatAPI, frame: IDAStackFrame, member: "ida_struct.member_t"):
         self._ida = ida
         self._frame = frame
         self._member = member

@@ -64,7 +64,7 @@ class GhidraDisassembler(BackendDisassembler):
 
 class GhidraRemoteDisassembler(GhidraDisassembler):
 
-    def __init__(self, input_path, ghidra_path=None):
+    def __init__(self, input_path, ghidra_path=None, **unused):
         """
         Initializes Ghidra disassembler.
 
@@ -111,8 +111,13 @@ class GhidraRemoteDisassembler(GhidraDisassembler):
 
 class GhidraLocalDisassembler(GhidraDisassembler):
 
-    def __init__(self, input_path=None):
-        super().__init__(self._currentProgram.executablePath)
+    def __init__(self, input_path=None, currentProgram=None, **unused):
+        if not currentProgram:
+            interpreter = pyhidra.get_current_interpreter()
+            currentProgram = interpreter.currentProgram
+
+        super().__init__(currentProgram.executablePath)
+        self._program = currentProgram
         # Input path is not required when inside Ghidra, but if provided
         # let's use it to validate we are looking at the right file.
         if input_path and pathlib.Path(input_path).resolve() != self.input_path:
@@ -121,13 +126,7 @@ class GhidraLocalDisassembler(GhidraDisassembler):
             )
         self.start()
 
-    @property
-    def _currentProgram(self):
-        interpreter = pyhidra.get_current_interpreter()
-        return interpreter.currentProgram
-
     def start(self):
-        self._program = self._currentProgram
         self._listing = self._program.getListing()
         from ghidra.program.flatapi import FlatProgramAPI
         self._flatapi = FlatProgramAPI(self._program)

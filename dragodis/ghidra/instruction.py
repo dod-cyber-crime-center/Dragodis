@@ -9,7 +9,7 @@ from dragodis.interface.instruction import Instruction, x86Instruction, ARMInstr
 
 if TYPE_CHECKING:
     from dragodis.interface.types import FlowType
-    from dragodis.ghidra.flat import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
     import ghidra
 
 
@@ -27,7 +27,7 @@ class GhidraInstruction(Instruction):
         "swp",
     ]
 
-    def __init__(self, ghidra: Ghidra, instruction: "ghidra.program.model.listing.Instruction"):
+    def __init__(self, ghidra: GhidraFlatAPI, instruction: "ghidra.program.model.listing.Instruction"):
         super().__init__(ghidra)
         self._ghidra = ghidra
         self._instruction = instruction

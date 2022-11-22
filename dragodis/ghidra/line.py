@@ -13,7 +13,7 @@ from dragodis.interface import Line, LineType, CommentType
 
 # Used for typing.
 if TYPE_CHECKING:
-    from dragodis.ghidra.flat import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
     import ghidra
     # A "CodeUnit" that line takes in is a subclass of CodeUnit.
     CodeUnit = Union[
@@ -67,7 +67,7 @@ class GhidraLine(Line):
         if v not in _data_type_map_inv:
             _data_type_map_inv[v] = k
 
-    def __init__(self, api: Ghidra, code_unit: "CodeUnit"):
+    def __init__(self, api: GhidraFlatAPI, code_unit: "CodeUnit"):
         super().__init__(api)
         self._ghidra = api
         self._code_unit = code_unit

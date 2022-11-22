@@ -8,14 +8,14 @@ from dragodis.exceptions import NotExistError
 from dragodis.interface import Memory
 
 if TYPE_CHECKING:
-    from dragodis.ida.flat import IDA
+    from dragodis.ida.flat import IDAFlatAPI
 
 
 class CachedMemory:
 
     _PAGE_SIZE = 0x1000
 
-    def __init__(self, ida: IDA):
+    def __init__(self, ida: IDAFlatAPI):
         self._ida = ida
         # Blocks we still need to cache
         uncached_chunks = []
@@ -103,7 +103,7 @@ class IDAMemory(Memory):
     NOTE: Unloaded memory will be presented as zero bytes.
     """
 
-    def __init__(self, ida: IDA, start: int, end: int):
+    def __init__(self, ida: IDAFlatAPI, start: int, end: int):
         super().__init__(start, end)
         self._ida = ida
         self._cache = ida._cached_memory

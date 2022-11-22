@@ -9,12 +9,12 @@ from dragodis.interface import Memory
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis.ghidra import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraMemory(Memory):
 
-    def __init__(self, ghidra: Ghidra, start: int, end: int):
+    def __init__(self, ghidra: GhidraFlatAPI, start: int, end: int):
         super().__init__(start, end)
         self._ghidra = ghidra
         self._memory = self._ghidra._program.getMemory()

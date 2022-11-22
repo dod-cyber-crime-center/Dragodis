@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+- Tested for IDA 8.0
+- Changes to `Import` objects to handle changes in IDA 8.0
+  - Added `Import.thunk_address` property to obtain an import's address to a thunk function if it exists.
+  - `Import.address` property will no longer include thunk addresses. It will always be the original function pointer.
+  - `Import.references_to` will now include references to both the original function pointer and the thunk function.
+- Increased default timeout for IDA remote calls to better handle samples with longer analysis time.
+- Add `timeout` option when initializing disassembler. (Does nothing if not using IDA remotely)
+- Include all operands, explicit and implied, for all instructions
+- Fix operand width calculation in Ghidra for xmmword pointers.
+- Fix bug in Ghidra when getting stack offset for a function argument without a calling convention.
+
 
 ## [0.5.3] - 2022-10-05
 - Fixed logging for teleported functions using IDA.

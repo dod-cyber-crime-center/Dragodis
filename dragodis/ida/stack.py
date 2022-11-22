@@ -6,13 +6,13 @@ from dragodis.ida.variable import IDAStackVariable
 from dragodis.interface.stack import StackFrame
 
 if TYPE_CHECKING:
-    from dragodis import IDA
+    from dragodis.ida.flat import IDAFlatAPI
     import ida_struct
 
 
 class IDAStackFrame(StackFrame):
 
-    def __init__(self, ida: IDA, frame: "ida_struct.struc_t"):
+    def __init__(self, ida: IDAFlatAPI, frame: "ida_struct.struc_t"):
         self._ida = ida
         self._frame = frame
         # Obtain the base of the stack by obtaining the location of the return address.

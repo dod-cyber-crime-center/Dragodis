@@ -26,7 +26,7 @@ from ..interface import ReferenceType
 cache = lru_cache(maxsize=1024)
 
 
-class IDA(FlatAPI, IDADisassembler):
+class IDAFlatAPI(FlatAPI, IDADisassembler):
 
     @property
     def _cached_memory(self):
@@ -269,8 +269,8 @@ class IDA(FlatAPI, IDADisassembler):
 
     @property
     def imports(self) -> Iterable[IDAImport]:
-        for address, name, namespace in self._ida_helpers.iter_imports():
-            yield IDAImport(self, address, name, namespace)
+        for address, thunk_address, name, namespace in self._ida_helpers.iter_imports():
+            yield IDAImport(self, address, thunk_address, name, namespace)
 
     @property
     def exports(self) -> Iterable[IDAExport]:
@@ -282,10 +282,9 @@ class IDA(FlatAPI, IDADisassembler):
             yield IDAExport(self, address, name)
 
 
-# Set proper Disassembler class based on whether we are inside or outside IDA.
-if utils.in_ida():
-    class IDA(IDA, IDALocalDisassembler):
-        ...
-else:
-    class IDA(IDA, IDARemoteDisassembler):
-        ...
+class IDALocal(IDAFlatAPI, IDALocalDisassembler):
+    ...
+
+
+class IDARemote(IDAFlatAPI, IDARemoteDisassembler):
+    ...

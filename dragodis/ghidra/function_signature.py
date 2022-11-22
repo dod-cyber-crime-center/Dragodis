@@ -12,12 +12,12 @@ from dragodis.exceptions import NotExistError
 
 if TYPE_CHECKING:
     import ghidra
-    from dragodis import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
 
 
 class GhidraFunctionSignature(FunctionSignature):
 
-    def __init__(self, ghidra: Ghidra, function: "ghidra.program.model.listing.Function"):
+    def __init__(self, ghidra: GhidraFlatAPI, function: "ghidra.program.model.listing.Function"):
         self._ghidra = ghidra
         self._function = function
 
@@ -118,7 +118,7 @@ class GhidraFunctionSignature(FunctionSignature):
 # TODO: Parameter should have an option to get a "Variable" object which represents the location?
 class GhidraFunctionParameter(FunctionParameter):
 
-    def __init__(self, signature: GhidraFunctionSignature, ghidra: Ghidra,  parameter: "ghidra.program.model.listing.Parameter"):
+    def __init__(self, signature: GhidraFunctionSignature, ghidra: GhidraFlatAPI,  parameter: "ghidra.program.model.listing.Parameter"):
         super().__init__(signature)
         self.signature: GhidraFunctionSignature
         self._ghidra = ghidra

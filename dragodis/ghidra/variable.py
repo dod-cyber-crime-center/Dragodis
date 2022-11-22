@@ -6,13 +6,13 @@ from dragodis.interface.variable import StackVariable, GlobalVariable
 from dragodis.ghidra.data_type import GhidraDataType
 
 if TYPE_CHECKING:
-    from dragodis.ghidra import Ghidra
+    from dragodis.ghidra.flat import GhidraFlatAPI
     import ghidra
 
 
 class GhidraGlobalVariable(GlobalVariable):
 
-    def __init__(self, ghidra: Ghidra, data: "ghidra.program.model.listing.Data"):
+    def __init__(self, ghidra: GhidraFlatAPI, data: "ghidra.program.model.listing.Data"):
         self._ghidra = ghidra
         self._data = data
 
@@ -44,7 +44,7 @@ class GhidraGlobalVariable(GlobalVariable):
 
 class GhidraStackVariable(StackVariable):
 
-    def __init__(self, ghidra: Ghidra, variable: "ghidra.program.model.listing.Variable"):
+    def __init__(self, ghidra: GhidraFlatAPI, variable: "ghidra.program.model.listing.Variable"):
         if not variable.isStackVariable():
             raise ValueError(f"{variable} must be a stack variable")
         self._ghidra = ghidra
