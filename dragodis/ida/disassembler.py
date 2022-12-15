@@ -439,9 +439,13 @@ class IDARemoteDisassembler(IDADisassembler):
         self._bridge.close()
         self._root = None
         self._bridge = None
+
         # Wait for server to shutdown completely.
-        # TODO: Figure out how to detect this directly.
-        time.sleep(1)
+        try:
+            self._process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            logger.error("Failed to properly close IDA process.")
+            self._process.kill()
 
         if self._socket_path:
             os.remove(self._socket_path)
