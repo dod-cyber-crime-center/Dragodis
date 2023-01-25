@@ -9,8 +9,18 @@ from dragodis.interface.types import ReferenceType
 
 class Reference(metaclass=abc.ABCMeta):
     """
-    References represent the references to or from any address or function found in a disassembler.
+    References to represent the references to or from any address or function found in a disassembler.
     """
+
+    def __eq__(self, other):
+        return isinstance(other, Reference) and (
+            self.from_address == other.from_address
+            and self.to_address == other.to_address
+            and self.type == other.type
+        )
+
+    def __hash__(self):
+        return hash((self.from_address, self.to_address, self.type))
 
     def __str__(self) -> str:
         return f"{self.type.name}: 0x{self.from_address:08x} --> 0x{self.to_address:08x}"
@@ -36,6 +46,13 @@ class Reference(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def is_data(self) -> bool:
         ...
+
+    @property
+    def is_call(self) -> bool:
+        """
+        Is a code call reference.
+        """
+        return self.type == ReferenceType.code_call
 
     @property
     @abc.abstractmethod

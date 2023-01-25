@@ -108,6 +108,49 @@ We can also directly call scripts using the `open_program()` function locally in
 When this happens, the input file path provided must match the detected input file path by the disassembler.
 
 
+### Specifying Processor Type
+
+The processor type can be specified during initialization of the `Disassembler` object or through `open_program()`. 
+This can be useful when loading shellcode.
+
+When using `open_program()` with any backend disassembler supported, use a `dragodis.PROCESSOR_*` flag which will get converted
+to a sane default for the respective disassembler.
+
+```python
+import dragodis
+with dragodis.open_program(r"C:\input.exe", processor=dragodis.PROCESSOR_ARM) as dis:
+    ...
+```
+
+If using a specific disassembler, any option that disassembler supports can be passed in.
+(Consult the documentation for the respective disassembler to know how to format the argument.)
+
+```python
+# IDA
+import dragodis
+ida = dragodis.IDA(r"C:\input", processor="arm:ARMv7-M")
+
+# Ghidra
+import dragodis
+ghidra = dragodis.Ghidra(r"C:\input", processor="ARM:LE:32:v7")
+```
+
+Alternatively, we can automatically choose the correct processor for the default disassembler chosen by the user 
+with some initial checks.
+
+```python
+import dragodis
+
+PROCESSOR = {
+    dragodis.BACKEND_IDA: "arm:ARMv7-M",
+    dragodis.BACKEND_GHIDRA: "ARM:LE:32:v7",
+}[dragodis.BACKEND_DEFAULT]
+
+with dragodis.open_program(r"C:\input", processor=PROCESSOR) as dis:
+    ...
+```
+
+
 ## Disassembler API Translation Map
 
 As a reference, the following tables provide a rough mapping between the general equivalent API calls for Dragodis and each supported
@@ -120,15 +163,18 @@ For brevity, some details and differences in results get glossed over here. Plea
 
 
 ## Basics
-| Dragodis*                                                | IDA                                                    | Ghidra                                                                                 | 
-|----------------------------------------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------------|
-| dis.processor_name                                       | ida_ida.inf_get_procname()                             | currentProgram.getLanguage().getProcessor()                                            |
-| dis.bit_size                                             | ida_ida.inf_get_app_bitness()                          | currentProgram.getDefaultPointerSize() * 8                                             |
-| dis.is_big_endian                                        | ida_ida.inf_is_be()                                    | currentProgram.getLanguage().isBigEndian()                                             |
-| dis.min_address                                          | ida_ida.inf_get_min_ea()                               | currentProgram.getMinAddress()                                                         |
-| dis.max_address                                          | ida_ida.inf_get_max_ea()                               | currentProgram.getMaxAddress()                                                         |
-| dis.get_virtual_address(file_offset)                     | ida_loader.get_fileregion_ea(file_offset)              | currentProgram.getMemory().locateAddressesForFileOffset(file_offset)                   |
-| dis.get_file_offset(address)                             | ida_loader.get_fileregion_offset(address)              | currentProgram.getMemory().getAddressSourceInfo(toAddr(address)).getFileOffset()       |
+| Dragodis*                            | IDA                                                    | Ghidra                                                                           | 
+|--------------------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------|
+| dis.processor_name                   | ida_ida.inf_get_procname()                             | currentProgram.getLanguage().getProcessor()                                      |
+| dis.compiler_name                    | ida_typeinf.get_compiler_name(ida_ida.inf_get_cc_id()) | currentProgram.getCompiler()                                                     |
+| dis.bit_size                         | ida_ida.inf_get_app_bitness()                          | currentProgram.getDefaultPointerSize() * 8                                       |
+| dis.is_big_endian                    | ida_ida.inf_is_be()                                    | currentProgram.getLanguage().isBigEndian()                                       |
+| dis.min_address                      | ida_ida.inf_get_min_ea()                               | currentProgram.getMinAddress()                                                   |
+| dis.max_address                      | ida_ida.inf_get_max_ea()                               | currentProgram.getMaxAddress()                                                   |
+| dis.base_address                     | ida_nalt.get_imagebase()                               | currentProgram.getImageBase()                                                    |
+| dis.get_virtual_address(file_offset) | ida_loader.get_fileregion_ea(file_offset)              | currentProgram.getMemory().locateAddressesForFileOffset(file_offset)             |
+| dis.get_file_offset(address)         | ida_loader.get_fileregion_offset(address)              | currentProgram.getMemory().getAddressSourceInfo(toAddr(address)).getFileOffset() |
+| dis.entry_point                      | ida_ida.inf_get_start_ip()                             | *(export with name "entry" or "_start")*                                         |
 
 
 ### Data
@@ -165,15 +211,16 @@ For brevity, some details and differences in results get glossed over here. Plea
 
 
 ### Cross-References
-| Dragodis*                                                                                                          | IDA                         | Ghidra                              | 
-|--------------------------------------------------------------------------------------------------------------------|-----------------------------|-------------------------------------|
-| dis.references_from(address)<br>dis.get_line(address).references_from<br>dis.get_function(address).references_from | idautils.XrefsFrom(address) | getReferencesFrom(toAddr(address))  |
-| dis.references_to(address)<br>dis.get_line(address).references_to<br>dis.get_function(address).references_to       | idautils.XrefsTo(address)   | getReferencesTo(toAddr(address))    |
-| ref.from_address                                                                                                   | ref.frm                     | ref.getFromAddress()                |
-| ref.to_address                                                                                                     | ref.to                      | ref.getToAddress()                  |
-| ref.type                                                                                                           | ref.type                    | ref.getReferenceType()              |
-| ref.is_code                                                                                                        | ref.iscode                  | not ref.getReferenceType().isData() |
-| ref.is_data                                                                                                        | not ref.iscode              | ref.getReferenceType().isData()     |
+| Dragodis*                                                                                                          | IDA                                                                                                            | Ghidra                                                                                                                                   | 
+|--------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| dis.references_from(address)<br>dis.get_line(address).references_from<br>dis.get_function(address).references_from | idautils.XrefsFrom(address)                                                                                    | getReferencesFrom(toAddr(address))                                                                                                       |
+| dis.references_to(address)<br>dis.get_line(address).references_to<br>dis.get_function(address).references_to       | idautils.XrefsTo(address)                                                                                      | getReferencesTo(toAddr(address))                                                                                                         |
+| ref.from_address                                                                                                   | ref.frm                                                                                                        | ref.getFromAddress()                                                                                                                     |
+| ref.to_address                                                                                                     | ref.to                                                                                                         | ref.getToAddress()                                                                                                                       |
+| ref.type                                                                                                           | ref.type                                                                                                       | ref.getReferenceType()                                                                                                                   |
+| ref.is_code                                                                                                        | ref.iscode                                                                                                     | not ref.getReferenceType().isData()                                                                                                      |
+| ref.is_data                                                                                                        | not ref.iscode                                                                                                 | ref.getReferenceType().isData()                                                                                                          |
+| dis.create_reference(from_address, to_address, dragodis.ReferenceType.*)                                           | ida_xref.add_cref(from_address, to_address, idc.fl_*)<br>ida_xref.add_dref(from_address, to_address, idc.dr_*) | currentProgram.getReferenceManager().addMemoryReference(toAddr(from_address), toAddr(to_address), RefType.*, SourceType.USER_DEFINED, 0) |
 
 
 ### Imports/Exports
@@ -256,8 +303,13 @@ For brevity, some details and differences in results get glossed over here. Plea
 | segment.initialized                                                   | ida_bytes.is_loaded(segment.start_ea)                                                 | memory_block.isInitialized()                                                                                                    |
 | segment.bit_size                                                      | segment.abits()                                                                       | memory_block.getStart().getSize()                                                                                               |
 | segment.permissions                                                   | segment.perm                                                                          | memory_block.isRead()<br>memory_block.isWrite()<br>memory_block.isExecute()<br>memory_block.isVolatile()                        |
+| dis.create_segment(".new_seg", 0x1234, 256)                           | ida_segment.add_segm(0, 0x1234, 0x1334, ".new_seg", "XTRN")                           | currentProgram.getMemory().createUninitializedBlock(".new_seg", toAddr(0x1234), 256, False)                                     |
 
 
+### Strings
+| Dragodis*                 | IDA                                                           | Ghidra                                |
+|---------------------------|---------------------------------------------------------------|---------------------------------------|
+| dis.strings(min_length=5) | finder = idautils.Strings(); finder.setup(minlen=5); list(sc) | findStrings(None, 5, 1, False, True)  |
 
 
 \* `dis` in the dragodis column represents the open disassembler object retrieved from `dragodis.open_program()`

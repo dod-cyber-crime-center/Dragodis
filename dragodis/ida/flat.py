@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from .. import utils
 
-from typing import Iterable, Union
+from typing import Iterable, Union, Optional
 
 from dragodis.interface.flat import FlatAPI
 from dragodis.exceptions import NotExistError
@@ -18,6 +18,7 @@ from .function import IDAFunction
 from .operand_value import IDARegister
 from .reference import IDAReference
 from .segment import IDASegment
+from .string import IDAString
 from .symbol import IDAImport, IDAExport
 from .variable import IDAGlobalVariable
 from ..interface import ReferenceType
@@ -36,6 +37,19 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         return self._ida_helpers.is_loaded(addr, num_bytes)
 
     @property
+    def processor_name(self) -> str:
+        proc = self._ida_ida.inf_get_procname()
+        # Switching "metapc" to "x86" to match Ghidra.
+        if proc == "metapc":
+            return "x86"
+        return proc
+
+    @property
+    def compiler_name(self) -> str:
+        cc_id = self._ida_ida.inf_get_cc_id()
+        return self._ida_typeinf.get_compiler_name(cc_id)
+
+    @property
     def bit_size(self) -> int:
         # IDA 7.6 adds ida_ida.inf_get_app_bitness()
         if self._idaapi.IDA_SDK_VERSION >= 760:
@@ -51,6 +65,12 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
     @property
     def is_big_endian(self) -> bool:
         return self._ida_ida.inf_is_be()
+
+    @property
+    def entry_point(self) -> Optional[int]:
+        address = self._ida_ida.inf_get_start_ip()
+        if address != self._BADADDR:
+            return address
 
     @cache
     def get_virtual_address(self, file_offset: int) -> int:
@@ -139,6 +159,13 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             raise NotExistError(f"Function does not exist at {hex(addr)}")
         return IDAFunction(self, func_t)
 
+    def get_function_by_name(self, name: str, ignore_underscore: bool = True) -> IDAFunction:
+        # Using ida_helpers instead of default implementation to improve performance.
+        func_t = self._ida_helpers.get_function_by_name(name, ignore_underscore=ignore_underscore)
+        if func_t is None:
+            raise NotExistError(f"Unable to find function with name: {name}")
+        return IDAFunction(self, func_t)
+
     # TODO: Add support for providing an operand to help get a better function signature type.
     @cache
     def get_function_signature(self, addr: int) -> IDAFunctionSignature:
@@ -172,6 +199,13 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
 
         return IDASegment(self, segment_t)
 
+    def create_segment(self, name: str, start: int, size: int) -> IDASegment:
+        # TODO: Support other segment class types.
+        success = self._ida_segment.add_segm(0, start, start + size, name, "XTRN")
+        if not success:
+            raise ValueError(f"Unable to create segment at 0x{start:08x}")
+        return self.get_segment(start)
+
     @property
     def segments(self) -> Iterable[IDASegment]:
         # Taken from idautils.Segments()
@@ -199,6 +233,25 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             )
 
         return self._ida_bytes.get_strlit_contents(addr, length, str_type)
+
+    def strings(self, min_length=3) -> Iterable[IDAString]:
+        sc = self._idautils.Strings()
+        sc.setup(
+            strtypes=[
+                self._ida_nalt.STRTYPE_C,
+                self._ida_nalt.STRTYPE_C_16,
+                self._ida_nalt.STRTYPE_C_32,
+                self._ida_nalt.STRTYPE_PASCAL,
+                self._ida_nalt.STRTYPE_PASCAL_16,
+                self._ida_nalt.STRTYPE_LEN2,
+                self._ida_nalt.STRTYPE_LEN2_16,
+                self._ida_nalt.STRTYPE_LEN4,
+                self._ida_nalt.STRTYPE_LEN4_16,
+            ],
+            minlen=min_length,
+        )
+        for string in sc:
+            yield IDAString(self, string)
 
     def get_data_type(self, name: str) -> IDADataType:
         is_ptr = name.endswith("*")
@@ -229,16 +282,12 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
     def min_address(self) -> int:
         return self._ida_ida.inf_get_min_ea()
 
+    @property
+    def base_address(self) -> int:
+        return self._ida_nalt.get_imagebase()
+
     def open_memory(self, start: int, end: int) -> IDAMemory:
         return IDAMemory(self, start, end)
-
-    @property
-    def processor_name(self) -> str:
-        proc = self._ida_ida.inf_get_procname()
-        # Switching "metapc" to "x86" to match Ghidra.
-        if proc == "metapc":
-            return "x86"
-        return proc
 
     def references_from(self, addr: int) -> Iterable[IDAReference]:
         # TODO: Cache chunks
@@ -254,6 +303,36 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         # TODO: Cache chunks
         for xref in self._idautils.XrefsTo(addr):
             yield IDAReference(self, xref)
+
+    def create_reference(self, from_address: int, to_address: int, ref_type: ReferenceType) -> IDAReference:
+        ref_type = IDAReference._type_map_inv[ref_type]
+        code = False
+        if ref_type in range(1, 6):  # data reference
+            success = self._ida_xref.add_dref(from_address, to_address, ref_type)
+        elif ref_type in range(16, 22):  # code reference
+            code = True
+            success = self._ida_xref.add_cref(from_address, to_address, ref_type)
+        else:
+            raise ValueError(f"Unsupported reference type: {ref_type}")
+        if not success:
+            raise ValueError(f"Unable to create reference: 0x{from_address:08x} -> 0x{to_address:08x}")
+
+        # IDA's xrefblt_t is actually an iterator which holds the attributes of the "current" reference
+        # being iterated.
+        # Copying the work done in xrefblt_t.refs_from()/refs_to()
+        xref = self._ida_xref.xrefblk_t()
+        xref.frm = from_address
+        xref.to = to_address
+        xref.type = ref_type
+        xref.iscode = code
+        xref.user = ref_type == 20
+        reference = IDAReference(self, xref)
+
+        # If reference is a new code call, tell analyzer to apply the callee's type to calling point.
+        if reference.type == ReferenceType.code_call:
+            self._ida_auto.auto_apply_type(reference.from_address, reference.to_address)
+
+        return reference
 
     def get_variable(self, addr: int) -> IDAGlobalVariable:
         start_address = self._ida_bytes.get_item_head(addr)
@@ -271,6 +350,13 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
     def imports(self) -> Iterable[IDAImport]:
         for address, thunk_address, name, namespace in self._ida_helpers.iter_imports():
             yield IDAImport(self, address, thunk_address, name, namespace)
+
+    def get_import(self, name: str) -> IDAImport:
+        # Using ida_helpers instead of default implementation to improve performance.
+        ret = self._ida_helpers.get_import(name)
+        if ret is None:
+            raise NotExistError(f"Import with name '{name}' doesn't exist.")
+        return IDAImport(self, *ret)
 
     @property
     def exports(self) -> Iterable[IDAExport]:

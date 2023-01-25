@@ -7,6 +7,8 @@ import abc
 
 from typing import Optional, Iterable, TYPE_CHECKING
 
+from dragodis.interface.types import ReferenceType
+
 if TYPE_CHECKING:
     from dragodis.interface import Reference
 
@@ -69,6 +71,15 @@ class Import(Symbol):
         """
         The address for the thunk function if it exists.
         """
+
+    @property
+    def calls_to(self) -> Iterable[int]:
+        """
+        Iterates addresses that call this import.
+        """
+        for ref in self.references_to:
+            if ref.type == ReferenceType.code_call:
+                yield ref.from_address
 
 
 class Export(Symbol):

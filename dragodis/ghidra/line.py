@@ -106,8 +106,6 @@ class GhidraLine(Line):
             return
         type_ = self.type
         self.undefine()
-        # new_data = array.array("b", new_data)
-        # NOTE: Converting to List[int] since jython is in Python 2.
         self._ghidra._flatapi.setBytes(self._addr_obj, new_data)
         self.type = type_
 
@@ -150,14 +148,16 @@ class GhidraLine(Line):
                 raise ValueError(f"Failed to set {hex(self.address)} with name: {new_name}")
 
     @property
-    def next(self) -> "GhidraLine":
+    def next(self) -> Optional["GhidraLine"]:
         next_code_unit = self._ghidra._listing.getCodeUnitAfter(self._addr_obj)
-        return GhidraLine(self._ghidra, next_code_unit)
+        if next_code_unit:
+            return GhidraLine(self._ghidra, next_code_unit)
 
     @property
-    def prev(self) -> "GhidraLine":
+    def prev(self) -> Optional["GhidraLine"]:
         prev_code_unit = self._ghidra._listing.getCodeUnitBefore(self._addr_obj)
-        return GhidraLine(self._ghidra, prev_code_unit)
+        if prev_code_unit:
+            return GhidraLine(self._ghidra, prev_code_unit)
 
     def set_comment(self, comment: Optional[str], comment_type=CommentType.eol):
         # Ghidra clears comment when null
@@ -270,6 +270,21 @@ class GhidraLine(Line):
 
     @value.setter
     def value(self, new_value: Any):
+        from ghidra.program.model.mem import MemoryAccessException
+        try:
+            self._set_value(new_value)
+        except MemoryAccessException:
+            block = self._ghidra._flatapi.getMemoryBlock(self._addr_obj)
+            if block.isInitialized():
+                # caused by some other problem
+                raise
+
+            # initialize the block and try again
+            memory = self._ghidra._program.getMemory()
+            memory.convertToInitialized(block, 0)
+            self._set_value(new_value)
+
+    def _set_value(self, new_value: Any):
         matched_types = LineType.match_type(new_value)
         if not matched_types:
             raise TypeError(f"Unsupported value type: {type(new_value)}")

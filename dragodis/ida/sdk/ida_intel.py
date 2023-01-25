@@ -5,6 +5,7 @@ This is a partial port of IDA's intel.hpp from the Hex-Rays SDK.
 from enum import IntEnum, auto
 
 import ida_allins
+import ida_bytes
 import ida_ua
 import idc
 import idaapi
@@ -291,6 +292,26 @@ def hasSIB(op: ida_ua.op_t) -> bool:
 def sib(op: ida_ua.op_t) -> int:
     """specflag2 holds the SIB if there is one"""
     return op.specflag2
+
+
+def is_segreg(reg: int) -> bool:
+    return RegNo.R_es <= reg <= RegNo.R_gs
+
+
+def is_fpureg(reg: int) -> bool:
+    return RegNo.R_st0 <= reg <= RegNo.R_st7
+
+
+def is_mmxreg(reg: int) -> bool:
+    return RegNo.R_mm0 <= reg <= RegNo.R_mm7
+
+
+def is_xmmreg(reg: int) -> bool:
+    return RegNo.R_xmm0 <= reg <= RegNo.R_xmm15
+
+
+def is_ymmreg(reg: int) -> bool:
+    return RegNo.R_ymm0 <= reg <= RegNo.R_ymm15
 
 
 def insn_jcc(insn: ida_ua.insn_t) -> bool:
@@ -704,3 +725,28 @@ def x86_scale(op: ida_ua.op_t) -> int:
 def has_displ(op: ida_ua.op_t) -> bool:
     """does the operand have a displacement?"""
     return op.type == ida_ua.o_displ or op.type == ida_ua.o_mem and hasSIB(op)
+
+
+def has_tls_segpref(insn: ida_ua.insn_t) -> bool:
+    """does the insn refer to the TLS variable?"""
+    if insn.segpref == 0:
+        return False
+    return (
+        (mode64(insn) and insn.segpref == RegNo.R_fs)
+        or (mode32(insn) and insn.segpref == RegNo.R_gs)
+    )
+
+
+def mem_as_displ(insn: ida_ua.insn_t, op: ida_ua.op_t) -> bool:
+    """
+    should we treat the memory operand as a displacement?
+
+    the operand should be an offset and it should be the TLS variable
+    or the second operand of "lea" instruction
+    .text:08000000 mov eax, gs:(ti1 - static_TP)
+    .text:08000E8F lea ecx, (_ZN4dmngL4sessE - _GLOBAL_OFFSET_TABLE_)
+    """
+    return (
+        (has_tls_segpref(insn) or insn.itype == ida_allins.NN_lea)
+        and ida_bytes.is_off(ida_bytes.get_flags(insn.ea), op.n)
+    )

@@ -79,19 +79,26 @@ def test_text_ghidra(disassembler, address, index, text, width):
 def test_value_x86(disassembler):
     # push    2
     # PUSH    0x2
-    assert disassembler.get_operand_value(0x401042, 0) == 2
+    immediate = disassembler.get_operand_value(0x401042, 0)
+    assert immediate == 2
+    assert int(immediate) == 2
 
     # add     esp, 8
     # ADD     ESP,0x8
-    assert disassembler.get_operand_value(0x40103f, 1) == 8
+    immediate = disassembler.get_operand_value(0x40103f, 1)
+    assert immediate == 8
+    assert int(immediate) == 8
     register = disassembler.get_operand_value(0x40103f, 0)
     assert register and isinstance(register, Register)
     assert register.name == "esp"
     assert register.bit_width == 32
+    assert int(register) == -1
 
     # push    offset aVgqvQvpkleUkvj
     # PUSH    s_Vgqv"qvpkle"ukvj"ig{"2z20_0040c010
-    assert disassembler.get_operand_value(0x401044, 0) == 0x40c010
+    address = disassembler.get_operand_value(0x401044, 0)
+    assert address == 0x40c010
+    assert int(address) == 0x40c010
 
     # lea     eax, [ebp+arg_4]
     # LEA     EAX=>Stack[0x8],[EBP + 0xc]
@@ -99,9 +106,12 @@ def test_value_x86(disassembler):
     assert phrase and isinstance(phrase, Phrase)
     assert phrase.offset == 0xc
     assert phrase.base.name == "ebp"
+    assert int(phrase) == 0xc
 
     # call    sub_401000
-    assert disassembler.get_operand_value(0x4010a3, 0) == 0x401000
+    address = disassembler.get_operand_value(0x4010a3, 0)
+    assert address == 0x401000
+    assert int(address) == 0x401000
 
     # add     ecx, dword_40DC20[esi*4]
     # ADD     ECX,dword ptr [ESI*0x4 + DAT_0040dc20]
@@ -111,6 +121,7 @@ def test_value_x86(disassembler):
     assert phrase.index.name == "esi"
     assert phrase.scale == 4
     assert phrase.offset == 0x40dc20
+    assert int(phrase) == 0x40dc20
 
 
 def test_value_arm(disassembler):
@@ -123,6 +134,7 @@ def test_value_arm(disassembler):
     assert value and isinstance(value, Register)
     assert value.name == "r6"
     assert operand.width == 4
+    assert int(value) == -1
 
 
 def _test_phrase(disassembler, address, index, phrase):
@@ -200,6 +212,7 @@ def test_register_list_arm(disassembler, address, index, names):
     reg_list = operand.value
     assert isinstance(reg_list, RegisterList)
     assert [reg.name for reg in reg_list] == names
+    assert int(reg_list) == -1
 
 
 @pytest.mark.parametrize("address,index,operand_type", [

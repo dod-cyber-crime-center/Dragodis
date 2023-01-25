@@ -42,6 +42,26 @@ class IDARegister(Register):
         return self._width * 8
 
     @property
+    def mask(self) -> int:
+        bitrange = self._ida._ida_bitrange.bitrange_t(0, 64 * 8)
+        name = self.name
+        self._ida._ida_idp.get_reg_info(name, bitrange)
+        if bitrange.empty():
+            # documented as a special state meaning the value is all bits in the container
+            return (1 << self.bit_width) - 1
+        return int(bitrange.mask64())
+
+    @property
+    def base(self) -> IDARegister:
+        bitrange = self._ida._ida_bitrange.bitrange_t(0, 64 * 8)
+        name = self.name
+        base_name = self._ida._ida_idp.get_reg_info(name, bitrange)
+        if base_name and name != base_name:
+            return self._ida.get_register(base_name)
+        else:
+            return self
+
+    @property
     def name(self) -> str:
         return self._ida._ida_idp.get_reg_name(self._reg, self._width).lower()
 
@@ -118,6 +138,7 @@ class IDAx86Phrase(Phrase):
     e.g.
         [ebp-eax*2+0x100]
         [ebp+4]
+        fs:[eax]
     """
 
     def __init__(self, ida: IDAFlatAPI, insn_t: "ida_ua.insn_t", op_t: "ida_ua.op_t"):
@@ -127,16 +148,34 @@ class IDAx86Phrase(Phrase):
         self._width = ida.bit_size // 8
 
     @property
+    def _segment_register(self) -> Optional[IDARegister]:
+        """Obtains the fs/gs register if used."""
+        # segpref holds the segment register for the x86 processor.
+        if segpref := self._insn_t.segpref:
+            # FIXME: Bit of a hack because I couldn't figure out how to properly determine which operand
+            #   the segment register belonged to.
+            reg_name = self._ida._ida_idp.get_reg_name(segpref, 2)
+            text = self._ida._idc.print_operand(self._insn_t.ea, self._op_t.n)
+            if reg_name in text:
+                return IDARegister(self._ida, segpref, 2)
+
+    def _x86_base_reg(self) -> Optional[IDARegister]:
+        base_reg = self._ida._ida_intel.x86_base_reg(self._insn_t, self._op_t)
+        if base_reg == -1:
+            return None
+        return IDARegister(self._ida, base_reg, self._width)
+
+    @property
     def base(self) -> Optional[IDARegister]:
         """
         The base register.
         e.g.
             [ebp+ecx*2+var_8] -> ebp
+            fs:[eax] -> fs
         """
-        base_reg = self._ida._ida_intel.x86_base_reg(self._insn_t, self._op_t)
-        if base_reg == -1:
-            return None
-        return IDARegister(self._ida, base_reg, self._width)
+        if seg_reg := self._segment_register:
+            return seg_reg
+        return self._x86_base_reg()
 
     @property
     def index(self) -> Optional[IDARegister]:
@@ -162,14 +201,19 @@ class IDAx86Phrase(Phrase):
         return 1 << self._ida._ida_intel.sib_scale(self._op_t)
 
     @property
-    def offset(self) -> int:
+    def offset(self) -> Union[int, IDARegister]:
         """
         The offset or displacement.
         This could be a register or immediate.
 
         e.g.
             [ebp+ecx*2+var_8] -> var_8 -> 8
+            fs:[eax] -> eax
         """
+        # If we have a segment register, the traditional base register is actually the offset.
+        if self._segment_register:
+            return self._x86_base_reg()
+
         offset = self._op_t.addr
         # Convert to signed number.
         if offset >> (self._ida.bit_size - 1):  # Is the hi-bit set?

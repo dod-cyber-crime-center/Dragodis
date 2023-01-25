@@ -38,6 +38,10 @@ class GhidraSegment(Segment):
 
     @property
     def initialized(self) -> bool:
+        #TODO can't handle any other address spaces except for the default
+        space = self._ghidra._program.getAddressFactory().getDefaultAddressSpace()
+        if self._memory_block.getStart().getAddressSpace() != space:
+            return False
         return self._memory_block.isInitialized()
 
     @property

@@ -24,6 +24,8 @@ def test_basic(disassembler):
         raise NotImplementedError
 
     actual_segments = list(disassembler.segments)
+    # Ghidra 10.2.* sometimes includes an extra "tdb" memory block... we are just going ignore that.
+    actual_segments = [seg for seg in actual_segments if seg.name != "tdb"]
     print(actual_segments)
     assert len(actual_segments) == len(expected_segments)
     for segment, expected_segments in zip(actual_segments, expected_segments):
@@ -45,6 +47,20 @@ def test_basic(disassembler):
         assert segment2 == segment
         segment3 = disassembler.get_segment(start)
         assert segment3 == segment
+
+
+def test_create_segment(disassembler):
+    orig_segments = list(disassembler.segments)
+    segment = disassembler.create_segment(".test", 0x1234, 256)
+    assert segment
+    assert segment.name == ".test"
+    assert segment.start == 0x1234
+    assert segment.end == 0x1234 + 256
+    assert not segment.initialized
+
+    segments = list(disassembler.segments)
+    assert len(segments) == len(orig_segments) + 1
+    assert any(seg.name == ".test" for seg in segments)
 
 
 def test_data(disassembler):

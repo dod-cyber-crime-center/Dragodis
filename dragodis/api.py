@@ -9,10 +9,11 @@ import pathlib
 from typing import Union, Type, TYPE_CHECKING
 
 from dragodis import utils
+from dragodis.constants import BACKEND_DEFAULT
 from dragodis.ghidra import GhidraLocal, GhidraRemote
 from dragodis.ida import IDALocal, IDARemote
-from dragodis.interface import FlatAPI
-
+from dragodis.interface import FlatAPI, BackendDisassembler
+from dragodis.interface.types import ProcessorType
 
 IDA = IDALocal if utils.in_ida() else IDARemote
 
@@ -29,7 +30,8 @@ if TYPE_CHECKING:
 
 
 # Expose flat api when user wants to do typing.
-Disassembler = FlatAPI
+class Disassembler(FlatAPI, BackendDisassembler):
+    ...
 
 
 def _get_class(name: str = None) -> Type[Disassembler]:
@@ -40,24 +42,25 @@ def _get_class(name: str = None) -> Type[Disassembler]:
         if utils.in_ghidra():
             return Ghidra
 
-    disassembler_name = name or os.environ.get("DRAGODIS_DISASSEMBLER", None)
-    if not disassembler_name:
+    name = name or BACKEND_DEFAULT
+    if not name:
         raise ValueError(
             "No disassembler provided. "
             "Please provide disassembler name as an argument or by setting "
             "the environment variable 'DRAGODIS_DISASSEMBLER'."
         )
-    if disassembler_name.lower() == "ida":
+    if name.lower() == "ida":
         return IDA
-    elif disassembler_name.lower() == "ghidra":
+    elif name.lower() == "ghidra":
         return Ghidra
     else:
-        raise ValueError(f"Not a valid disassembler: {disassembler_name}")
+        raise ValueError(f"Not a valid disassembler: {name}")
 
 
 def open_program(
         file_path: Union[str, pathlib.Path],
         disassembler: str = None,
+        processor: Union[ProcessorType, str] = None,
         **config
 ) -> Disassembler:
     """
@@ -66,6 +69,8 @@ def open_program(
     :param file_path: Path to binary file to disassemble.
     :param disassembler: Name of disassembler to use.
         (Defaults to disassembler provided in DRAGODIS_DISASSEMBLER environment variable.)
+    :param processor: Processor spec to use.
+        (Defaults to auto-detection by underlying disassembler)
     :param config: Arguments to pass to disassembler during instantiation.
         Non-applicable arguments will be ignored.
 
@@ -73,4 +78,4 @@ def open_program(
     :raises ValueError: If the specified disassembler is not supported.
     """
     file_path = pathlib.Path(file_path)
-    return _get_class(disassembler)(file_path, **config)
+    return _get_class(disassembler)(file_path, processor=processor, **config)

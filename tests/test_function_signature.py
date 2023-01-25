@@ -106,6 +106,25 @@ def test_parameter_info_ida(disassembler):
     assert param_0.declaration == "_BYTE * a1"
 
 
+def test_applied_function_signature_ida(disassembler):
+    """
+    Test that new signature has been applied back to disassembly view within IDB.
+    """
+    address = 0x401000
+    ida_typeinf = disassembler._ida_typeinf
+    ida_nalt = disassembler._ida_nalt
+
+    tif = ida_typeinf.tinfo_t()
+    ida_nalt.get_tinfo(tif, address)
+    assert str(tif) == ""
+
+    # The act of getting the function signature will use and apply the signature from the decompiler.
+    disassembler.get_function_signature(address)
+    tif = ida_typeinf.tinfo_t()
+    ida_nalt.get_tinfo(tif, address)
+    assert str(tif) == "_BYTE *__cdecl(_BYTE *a1, char a2)"
+
+
 def test_parameter_info_ghidra(disassembler):
     signature = disassembler.get_function_signature(0x401000)
     param_0 = signature.parameters[0]

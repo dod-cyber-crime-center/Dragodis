@@ -24,10 +24,12 @@ import idautils
 logger = logging.getLogger(__name__)
 
 
-def iter_imports() -> Iterable[Tuple[int, Optional[int], str, str]]:
+def iter_imports(_target=None) -> Iterable[Tuple[int, Optional[int], str, str]]:
     """
     Iterates the imports, returning the address function name and namespace
     for the import.
+
+    :param _target: Internally used to extract a specific import.
 
     :yields: (address, thunk_address or None, func_name, namespace)
     """
@@ -54,7 +56,11 @@ def iter_imports() -> Iterable[Tuple[int, Optional[int], str, str]]:
                     else:
                         raise RuntimeError(f"Failed to find a thunk for {name} at 0x{addr:08X}")
 
+                if _target and name != _target:
+                    return True  # continue enumeration
                 entries.append((addr, thunk_addr, name))
+                if _target and name == _target:
+                    return False  # target found, stop enumeration
 
             return True  # continue enumeration
 
@@ -62,6 +68,14 @@ def iter_imports() -> Iterable[Tuple[int, Optional[int], str, str]]:
 
         for addr, thunk_addr, name in entries:
             yield addr, thunk_addr, name, namespace
+
+
+def get_import(name: str) -> Optional[Tuple[int, int, str, str]]:
+    """
+    Gets import for given name.
+    """
+    for address, thunk_address, import_name, namespace in iter_imports(_target=name):
+        return address, thunk_address, import_name, namespace
 
 
 def iter_exports() -> Iterable[Tuple[int, str]]:
@@ -231,7 +245,6 @@ def _get_tif_with_guess_type(address: int) -> Optional[ida_typeinf.tinfo_t]:
     return tif
 
 
-
 _seen_func_types = set()
 
 def get_func_type_info(address: int, operand: Tuple[int, int] = None) -> Tuple[ida_typeinf.func_type_data_t, ida_typeinf.tinfo_t]:
@@ -282,6 +295,7 @@ def get_func_type_info(address: int, operand: Tuple[int, int] = None) -> Tuple[i
         if success:
             # record that we have processed this function before. (and that we can grab it from the offset)
             _seen_func_types.add(address)
+            func_type_data, tif = apply_func_type_data(address, func_type_data)
             return func_type_data, tif
 
     # If we have still failed, we have one more trick under our sleeve.
@@ -293,9 +307,38 @@ def get_func_type_info(address: int, operand: Tuple[int, int] = None) -> Tuple[i
         func_type_data = ida_typeinf.func_type_data_t()
         success = tif.get_func_details(func_type_data)
         if success:
+            func_type_data, tif = apply_func_type_data(address, func_type_data)
             return func_type_data, tif
 
     raise RuntimeError(f"Failed to obtain func_type_data_t object for offset 0x{address:X}")
+
+
+def apply_func_type_data(address: int, func_type_data: ida_typeinf.func_type_data_t) -> Tuple[ida_typeinf.func_type_data_t, ida_typeinf.tinfo_t]:
+    """
+    Applies given func_type_data_t to function pointed by given address.
+
+    :param address: Address of function.
+    :param func_type_data: Type information to apply to function.
+
+    :return: Tuple containing newly created func_type_data_t and tinfo_t objects. (Toss the old one)
+    """
+    # Create new tif and apply.
+    tif = ida_typeinf.tinfo_t()
+    success = tif.create_func(func_type_data)
+    if not success:
+        raise RuntimeError(f"Failed to create new function tinfo object.")
+    success = ida_typeinf.apply_tinfo(address, tif, ida_typeinf.TINFO_DEFINITE)
+    if not success:
+        raise RuntimeError(f"Failed to apply function signatures changes.")
+
+    # We also need to create a new func_type_data, because the old one gets
+    # borked for some reason.
+    func_type_data = ida_typeinf.func_type_data_t()
+    success = tif.get_func_details(func_type_data)
+    if not success:
+        raise RuntimeError(f"Failed to generate new func_type_data object.")
+
+    return func_type_data, tif
 
 
 def decompiled_code(address: int, _visited=None) -> Optional[ida_hexrays.cfuncptr_t]:
@@ -350,3 +393,15 @@ def decompiled_code(address: int, _visited=None) -> Optional[ida_hexrays.cfuncpt
     # TODO: Observed this message pops up with fail_obj.code == 0... unsure if that is actually an error.
     logger.debug(f"Unable to decompile function at {hex(address)}: {fail_obj.code}")
     return None
+
+
+def get_function_by_name(name: str, ignore_underscore: bool = False) -> Optional[ida_funcs.func_t]:
+    """
+    Gets function by name (if it exists.)
+    """
+    for ea in idautils.Functions():
+        func_name = ida_funcs.get_func_name(ea)
+        if ignore_underscore:
+            func_name = func_name.strip("_")
+        if func_name == name:
+            return ida_funcs.get_func(ea)

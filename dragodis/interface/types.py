@@ -6,17 +6,6 @@ from enum import IntEnum, IntFlag, auto
 from typing import Any, List
 
 
-__all__ = [
-    "CommentType",
-    "FlowType",
-    "LineType",
-    "OperandType",
-    "ReferenceType",
-    "SegmentPermission",
-    "SegmentType",
-]
-
-
 class CommentType(IntEnum):
     eol = auto()
     anterior = auto()
@@ -172,3 +161,17 @@ class SegmentType(IntEnum):
     null = auto()
     uninitialized = auto()
     external = auto()
+
+
+class ProcessorType(IntEnum):
+    ARM = auto()
+    ARM64 = auto()
+    x86 = auto()
+    x64 = auto()
+
+
+# convenience
+PROCESSOR_ARM = ProcessorType.ARM
+PROCESSOR_ARM64 = ProcessorType.ARM64
+PROCESSOR_X86 = ProcessorType.x86
+PROCESSOR_X64 = ProcessorType.x64

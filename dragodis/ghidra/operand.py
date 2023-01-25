@@ -183,6 +183,7 @@ class GhidraOperand(Operand):
             )
 
         # [r3,r2]
+        # FS:[EAX]
         elif op_types == [Register, Register] and self.type != OperandType.register_list:
             return GhidraPhrase(
                 base=GhidraRegister(ops[0]),

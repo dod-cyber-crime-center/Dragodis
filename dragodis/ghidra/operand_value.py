@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union, List, Optional
+from typing import TYPE_CHECKING, Union, Optional
 
 from dragodis.interface.operand_value import (
     OperandValue, Immediate, MemoryReference, Register, RegisterList,
@@ -32,6 +32,15 @@ class GhidraRegister(Register):
     @property
     def bit_width(self) -> int:
         return int(self._register.getBitLength())
+
+    @property
+    def mask(self) -> int:
+        mask = bytes(self._register.getBaseMask())
+        return int.from_bytes(mask, byteorder='big', signed=False)
+
+    @property
+    def base(self) -> GhidraRegister:
+        return GhidraRegister(self._register.getBaseRegister())
 
     @property
     def name(self) -> str:

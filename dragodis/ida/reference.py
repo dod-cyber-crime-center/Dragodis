@@ -29,6 +29,7 @@ class IDAReference(Reference):
         20: ReferenceType.code_user,            # ida_xref.fl_USobsolete  # TODO: determine if we need this one?
         21: ReferenceType.ordinary_flow,        # ida_xref.fl_F
     }
+    _type_map_inv = {value: key for key, value in _type_map.items()}
 
     def __init__(self, ida: IDAFlatAPI, xref: "ida_xref.xrefblk_t"):
         self._ida = ida

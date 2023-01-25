@@ -6,4 +6,4 @@ from dragodis.constants import *
 # Import types from interface that may needed by users.
 from dragodis.interface.types import *
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"

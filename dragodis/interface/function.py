@@ -22,6 +22,12 @@ class Function(metaclass=abc.ABCMeta):
     def __init__(self, api: FlatAPI):
         self._api = api
 
+    def __hash__(self):
+        return self.start
+
+    def __eq__(self, other):
+        return isinstance(other, Function) and self.start == other.start
+
     def __contains__(self, addr: int) -> bool:
         """
         Returns whether the given address is within the function.

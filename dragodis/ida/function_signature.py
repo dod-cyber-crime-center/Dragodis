@@ -10,7 +10,7 @@ from dragodis.ida.function_argument_location import (
     IDAStackLocation, IDARegisterPairLocation, IDARelativeRegisterLocation
 )
 from dragodis.interface.function_signature import FunctionSignature, FunctionParameter
-from dragodis.exceptions import NotExistError
+from dragodis.exceptions import NotExistError, UnsupportedError
 
 if TYPE_CHECKING:
     import ida_typeinf
@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class IDAFunctionSignature(FunctionSignature):
-
-    # Caches function types.
-    _func_types = set()
 
     # pulled from ida_typeinf.CM_CC_* constants
     _cc_map = {
@@ -35,6 +32,7 @@ class IDAFunctionSignature(FunctionSignature):
         0x70: "__fastcall",
         0x80: "__thiscall",
         0xB0: "__golang",
+        0xE0: "__userpurge",
         0xF0: "__usercall",
     }
     _cc_map_inv = {name: opcode for opcode, name in _cc_map.items()}
@@ -114,32 +112,19 @@ class IDAFunctionSignature(FunctionSignature):
     def parameters(self) -> List[IDAFunctionParameter]:
         if self._parameters is None:
             self._parameters = [
-                IDAFunctionParameter(self) for _ in range(self._func_type_data.size())
+                IDAFunctionParameter(self, i) for i in range(self._func_type_data.size())
             ]
+            if len(self._parameters) <= 1:
+                return self._parameters
+            if self.calling_convention in ("__usercall", "__userpurge"):
+                self._parameters = sorted(self._parameters, key=lambda parameter: parameter.location)
         return self._parameters
 
     def _apply(self):
         """
         Applies changes to func_type_data back to the IDB database.
         """
-        # Create new tif and apply.
-        ida_typeinf = self._ida._ida_typeinf
-        tif = ida_typeinf.tinfo_t()
-        success = tif.create_func(self._func_type_data)
-        if not success:
-            raise RuntimeError(f"Failed to create new function tinfo object.")
-        success = ida_typeinf.apply_tinfo(self._address, tif, ida_typeinf.TINFO_DEFINITE)
-        if not success:
-            raise RuntimeError(f"Failed to apply function signatures changes.")
-        self._tif = tif
-
-        # We also need to create a new func_type_data, because the old one gets
-        # borked for some reason.
-        func_type_data = ida_typeinf.func_type_data_t()
-        success = tif.get_func_details(func_type_data)
-        if not success:
-            raise RuntimeError(f"Failed to generate new func_type_data object.")
-        self._func_type_data = func_type_data
+        self._func_type_data, self._tif = self._ida._ida_helpers.apply_func_type_data(self._address, self._func_type_data)
 
     def replace_parameters(self, data_types: List[str]):
         # Easiest way to replace all parameters is to set the function type itself.
@@ -171,7 +156,7 @@ class IDAFunctionSignature(FunctionSignature):
 
         # Update _parameters cache.
         if self._parameters is not None:
-            new_param = IDAFunctionParameter(self)
+            new_param = IDAFunctionParameter(self, len(self._parameters))
             self._parameters.append(new_param)
             return new_param
         else:
@@ -197,6 +182,9 @@ class IDAFunctionSignature(FunctionSignature):
         if ordinal not in range(num_parameters):
             raise ValueError(f"Invalid ordinal for parameter insertion: {ordinal}")
 
+        if self.calling_convention in ("__usercall", "__userpurge"):
+            raise UnsupportedError("Cannot insert a parameter into a usercall function")
+
         data_type = self._ida.get_data_type(data_type)
         new_param = self._ida._ida_typeinf.funcarg_t()
         new_param.type = data_type._tinfo
@@ -209,8 +197,10 @@ class IDAFunctionSignature(FunctionSignature):
 
         # Update parameters cache.
         if self._parameters is not None:
-            new_param = IDAFunctionParameter(self)
+            new_param = IDAFunctionParameter(self, ordinal)
             self._parameters.insert(ordinal, new_param)
+            for i, param in enumerate(self._parameters):
+                param._ordinal = i
             return new_param
         else:
             return self.parameters[ordinal]
@@ -221,13 +211,14 @@ class IDAFunctionParameter(FunctionParameter):
     Interface for a parameter from a FunctionSignature
     """
 
-    def __init__(self, signature: IDAFunctionSignature):
+    def __init__(self, signature: IDAFunctionSignature, ordinal: int):
         # NOTE: While it may look weird that there is no argument specific stuff here, that
         # is because the signature will keep track of the ordinal for us, which gives
         # us the information to obtain everything else.
         # This allows us to dynamically change the ordinal of the parameter based on signature.
         super().__init__(signature)
         self._ida = signature._ida
+        self._ordinal = ordinal
 
     @property
     def _funcarg(self) -> "ida_typeinf.funcarg_t":
@@ -244,10 +235,7 @@ class IDAFunctionParameter(FunctionParameter):
 
     @property
     def ordinal(self) -> int:
-        try:
-            return self.signature.parameters.index(self)
-        except ValueError:
-            raise NotExistError(f"Parameter has been removed from function signature.")
+        return self._ordinal
 
     @property
     def data_type(self) -> IDADataType:

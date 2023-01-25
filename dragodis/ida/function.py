@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 #   (However, different addresses can be the same function!!!)
 class IDAFunction(Function):
 
-    # Cache of function types we have computed.
-    _func_types = set()
-
     def __init__(self, ida: IDAFlatAPI, func_t: "ida_funcs.func_t"):
         super().__init__(ida)
         self._ida = ida

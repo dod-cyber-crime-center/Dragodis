@@ -6,6 +6,7 @@ import capstone
 
 # TODO: Rename to base?
 from dragodis.exceptions import NotExistError
+from dragodis.interface.string import String
 from dragodis.interface.variable import GlobalVariable
 from dragodis.interface.data_type import DataType
 from dragodis.interface.function_signature import FunctionSignature
@@ -19,7 +20,7 @@ from dragodis.interface.segment import Segment
 from dragodis.interface.line import Line
 from dragodis.interface.reference import Reference
 from dragodis.interface.symbol import Import, Export
-from dragodis.interface.types import OperandType, CommentType
+from dragodis.interface.types import OperandType, CommentType, ReferenceType
 
 
 # TODO: Look into using zope.interface instead of abc
@@ -76,6 +77,20 @@ class FlatAPI(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
+    def processor_name(self) -> str:
+        """
+        Returns the name of the processor.
+        """
+
+    @property
+    @abc.abstractmethod
+    def compiler_name(self) -> str:
+        """
+        Returns the name of the compiler.
+        """
+
+    @property
+    @abc.abstractmethod
     def bit_size(self) -> int:
         """
         Returns the address bit size of the detected processor.
@@ -88,6 +103,28 @@ class FlatAPI(metaclass=abc.ABCMeta):
         Whether the processor is big endian.
         (Assumed to be little endian if False)
         """
+
+    @property
+    @abc.abstractmethod
+    def entry_point(self) -> Optional[int]:
+        """
+        The address for the OEP (Original Entry Point) or general starting address for the program (if applicable).
+        NOTE: This is usually the "AddressOfEntryPoint" listing. Use .exports to get other possible entry points.
+
+        :yields: Address of the entry point or None if not applicable.
+        """
+
+    def is_loaded(self, addr: int) -> bool:
+        """
+        Determines if the given address exists and is loaded in the sample.
+
+        :param addr: Address to test.
+        :return: Whether the address exists and is loaded.
+        """
+        try:
+            return self.get_line(addr).is_loaded
+        except NotExistError:
+            return False
 
     @abc.abstractmethod
     def functions(self, start=None, end=None) -> Iterable[Function]:
@@ -222,10 +259,29 @@ class FlatAPI(metaclass=abc.ABCMeta):
         The :class:`~.Function` instance may be cached or a new instance created.
 
         :param int addr: Any address within the Function
+
         :return: A :class:`~.Function` instance containing the given address
-        :rtype: Function or None
         :raises NotExistError: If there is no function containing the given address.
         """
+
+    def get_function_by_name(self, name: str, ignore_underscore: bool = True) -> Function:
+        """
+        Returns a `Function` instance with given name.
+
+        :param str name: Name of function to obtain
+        :param bool ignore_underscore: Whether to ignore leading or trailing underscores in function name.
+            (Will return the first found function if enabled.)
+
+        :return: A :class:`~.Function` instance containing the given address
+        :raises NotExistError: If there is no function containing the given address.
+        """
+        for func in self.functions():
+            func_name = func.name
+            if ignore_underscore:
+                func_name = func_name.strip("_")
+            if func_name == name:
+                return func
+        raise NotExistError(f"Unable to find function with name: {name}")
 
     # TODO: Implement ability to provide operand for the assist?
     @abc.abstractmethod
@@ -401,6 +457,18 @@ class FlatAPI(metaclass=abc.ABCMeta):
         :raises NotExistError: If a segment doesn't exist for the given input.
         """
 
+    @abc.abstractmethod
+    def create_segment(self, name: str, start: int, size: int) -> Segment:
+        """
+        Creates and returns a memory segment object that starts at given address.
+
+        :param name: Name of segment
+        :param start: Start address of segment
+        :param size: Size of segment
+        :return: Segment object created
+        :raises ValueError: If segment couldn't be created.
+        """
+
     @property
     @abc.abstractmethod
     def segments(self) -> Iterable[Segment]:
@@ -424,6 +492,16 @@ class FlatAPI(metaclass=abc.ABCMeta):
             (May be omitted to allow disassembler to determine appropriate value.)
             (Must be 8, 16, or 32 if provided.)
         :return: Raw bytes containing encoded string.
+        """
+
+    @abc.abstractmethod
+    def strings(self, min_length=3) -> Iterable[String]:
+        """
+        Iterates strings found in the disassembly.
+
+        :param min_length: Minimum length of string to have the found string count.
+
+        :yields: String object
         """
 
     def line_addresses(self, start: int = None, end: int = None, reverse=False) -> Iterable[int]:
@@ -472,6 +550,8 @@ class FlatAPI(metaclass=abc.ABCMeta):
                     break
                 yield line
                 line = line.prev
+                if not line:
+                    break
         else:
             if end < start:
                 raise ValueError(f"Start address {hex(start)} must be less than end address {hex(end)}")
@@ -481,6 +561,8 @@ class FlatAPI(metaclass=abc.ABCMeta):
                     break
                 yield line
                 line = line.next
+                if not line:
+                    break
 
     def instructions(self, start: int = None, end: int = None, reverse=False) -> Iterable[Instruction]:
         """
@@ -504,6 +586,13 @@ class FlatAPI(metaclass=abc.ABCMeta):
     def min_address(self) -> int:
         """
         Minimum address in program.
+        """
+
+    @property
+    @abc.abstractmethod
+    def base_address(self) -> int:
+        """
+        Image base address.
         """
 
     def next_line_address(self, addr: int) -> int:
@@ -546,15 +635,6 @@ class FlatAPI(metaclass=abc.ABCMeta):
         :return: Memory object.
         """
 
-    # TODO: Standardize processor names through the use of an enum?
-    #   - IDA calls "metapc" what Ghidra calls "x86/x64"
-    @property
-    @abc.abstractmethod
-    def processor_name(self) -> str:
-        """
-        Returns the name of the detected processor.
-        """
-
     @abc.abstractmethod
     def references_from(self, addr: int) -> Iterable[Reference]:
         """
@@ -571,6 +651,18 @@ class FlatAPI(metaclass=abc.ABCMeta):
 
         :param int addr: Address to get references to
         :yield: `Reference` objects.
+        """
+
+    @abc.abstractmethod
+    def create_reference(self, from_address: int, to_address: int, ref_type: ReferenceType) -> Reference:
+        """
+        Creates a cross reference.
+
+        :param from_address: source address
+        :param to_address: destination address
+        :param ref_type: Type of reference
+        :return: Reference object created
+        :raises ValueError: If cross reference failed to create.
         """
 
     def get_variable(self, addr: int) -> GlobalVariable:

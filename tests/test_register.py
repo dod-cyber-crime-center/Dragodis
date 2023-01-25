@@ -1,8 +1,7 @@
 
 import pytest
 
-import dragodis
-from dragodis.interface import Register, RegisterList
+from dragodis.interface import Register
 
 
 @pytest.mark.parametrize("address,index,name,width", [
@@ -41,3 +40,28 @@ def test_equality(disassembler):
     ecx = disassembler.get_operand_value(0x401009, 0)
     cl = disassembler.get_operand_value(0x40101C, 1)
     assert ecx != cl
+
+
+@pytest.mark.parametrize("register,mask", [
+    ("al", 0xFF),
+    ("ah", 0xFF00),
+    ("eax", 0xFFFFFFFF),
+    ("eip", 0xFFFFFFFF),
+    ("esp", 0xFFFFFFFF)
+])
+def test_mask(disassembler, register, mask):
+    reg = disassembler.get_register(register)
+    assert reg.mask == mask
+
+
+@pytest.mark.parametrize("register,base", [
+    ("al", "eax"),
+    ("ah", "eax"),
+    ("eax", "eax"),
+    ("eip", "eip"),
+    ("esp", "esp"),
+    ("fs", "fs")
+])
+def test_base(disassembler, register, base):
+    reg = disassembler.get_register(register)
+    assert reg.base == disassembler.get_register(base)

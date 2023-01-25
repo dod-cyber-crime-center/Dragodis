@@ -16,12 +16,14 @@ def test_disassembler_info_ghidra_all(disassembler):
 def test_processor_info(disassembler):
     assert disassembler.bit_size == 32
     assert disassembler.processor_name == "x86"
+    assert disassembler.compiler_name in ("Visual C++", "visualstudio:unknown")
     assert disassembler.is_big_endian == False
 
 
 def test_processor_info_arm(disassembler):
     assert disassembler.bit_size == 32
     assert disassembler.processor_name == "ARM"
+    assert disassembler.compiler_name in ("GNU C++", "unknown")  # TODO: Ghidra fails to figure this one out.
     assert disassembler.is_big_endian == False
 
 
@@ -32,7 +34,25 @@ def test_addressing_ida(disassembler):
 
 def test_addressing_ghidra(disassembler):
     assert disassembler.min_address == 0x400000
-    assert disassembler.max_address == 0x40ed47
+    # Ghidra 10.2.* includes a new "tdb" memory block which increases the max address size.
+    # https://github.com/NationalSecurityAgency/ghidra/issues/4790
+    assert disassembler.max_address in (0x40ed47, 0xffdfffff)
+
+
+def test_entry_point_x86(disassembler):
+    assert disassembler.entry_point == 0x4014e0
+
+
+def test_entry_point_arm(disassembler):
+    assert disassembler.entry_point == 0x1030c
+
+
+def test_base_address_x86(disassembler):
+    assert disassembler.base_address == 0x400000
+
+
+def test_base_address_arm(disassembler):
+    assert disassembler.base_address == 0x10000
 
 
 def test_file_offset(disassembler):
@@ -44,6 +64,11 @@ def test_file_offset(disassembler):
         disassembler.get_file_offset(0x1)
     with pytest.raises(dragodis.NotExistError):
         disassembler.get_virtual_address(0xc001)
+
+
+def test_is_loaded(disassembler):
+    assert disassembler.is_loaded(0x4063b7)
+    assert not disassembler.is_loaded(0x117f7d8)
 
 
 def test_lines(disassembler):
@@ -208,6 +233,13 @@ def test_get_function(disassembler):
     # get at least 200.
     funcs = list(disassembler.functions())
     assert len(funcs) > 200
+
+
+def test_get_function_by_name(disassembler):
+    func = disassembler.get_function_by_name("printf")
+    assert func
+    assert func.start == 0x4012a0
+    assert "printf" in func.name
 
 
 def test_functions(disassembler):

@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased]
+- Add equality handling for `Function` objects based on start address.
+- Added `Disassembler.create_segment()` for creating a basic segment memory block.
+- Added `Disassembler.create_reference()` for creating memory cross-references.
+- For convenience, `OperandValue` objects can now be cast with `int()` to get a sane value based on type. This helps to match the original functionality of IDA's get_operand_value().
+  - WARNING: For some operand types like single registers a -1 will be returned.
+- Added `strings()` function to disassembler API.
+- Added `.base_address` and `.entry_point` properties to disassembler API.
+- Added `Reference.is_call` convenience property.
+- Added `Disassembler.get_function_by_name()` convenience function.
+- Added `Disassembler.is_loaded()` convenience function.
+- Improved performance for `get_import()` when using IDA.
+- Removed garbage collection disabling workaround from IDA disassembler.
+- Add `Import.calls_to` convenience property.
+- Fixed getting function signatures in IDA to ensure data types and parameter names from the decompiler are propagated back to the listing view. (This fixes the "Failed to get stack information" error in rugosa.)
+- Sort `__usercall` function arguments to provide consistent ordering between disassemblers.
+- Improved getting functions in Ghidra.
+- Fixed functions with missing arguments in Ghidra due to the use of custom calling parameter storage.
+- Added `base` and `mask` properties to `Register`.
+- Fixed support for operands with segment registers (e.g. `fs:[eax]`)
+  - These will be presented as phrase types with the segment register as the base.
+- Added ability to set the processor during instantiation. (See [documentation](README.md#specifying-processor-type) for more information)
+
+
 ## [0.6.0] - 2022-11-22
 - Tested for IDA 8.0
 - Changes to `Import` objects to handle changes in IDA 8.0
@@ -21,8 +45,8 @@
 
 
 ## [0.5.2] - 2022-09-13
-- Fixed very slow processing times when pulling segment information in IDA. 
-- Updated segment interface to properly include uninitialized segments. 
+- Fixed very slow processing times when pulling segment information in IDA.
+- Updated segment interface to properly include uninitialized segments.
 - Uninitialized segments will now return an empty byte string.
 
 
@@ -73,16 +97,16 @@
 - Updated README
 - Interface has been completely refactored.
 - Added support for:
-  : - Flowcharts
-    - Function Signatures
-    - Insturctions
-    - Memory
-    - Operands
-    - Operand value types
-    - References
-    - Imports/Export symbols
-    - Stack/Global variables
-    - Segments
+  - Flowcharts
+  - Function Signatures
+  - Instructions
+  - Memory
+  - Operands
+  - Operand value types
+  - References
+  - Imports/Export symbols
+  - Stack/Global variables
+  - Segments
 
 
 ## 0.1.0 - 2020-11-25

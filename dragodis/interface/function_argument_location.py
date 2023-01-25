@@ -1,17 +1,29 @@
 
 from __future__ import annotations
 import abc
+from functools import total_ordering
 from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from dragodis.interface import Register
 
 
+@total_ordering
 class ArgumentLocation(metaclass=abc.ABCMeta):
-    ...
+
+    _PRIORITY: int
+
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        return self._PRIORITY < other._PRIORITY
+
+    @abc.abstractmethod
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        ...
 
 
 class StackLocation(ArgumentLocation):
+
+    _PRIORITY = 3
 
     def __str__(self) -> str:
         return f"stack[0x{self.stack_offset:x}]"
@@ -31,8 +43,20 @@ class StackLocation(ArgumentLocation):
         """
         # TODO: Should we return a StackVariable object instead?
 
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, StackLocation):
+            return self.stack_offset < other.stack_offset
+        return super().__lt__(other)
+
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, StackLocation):
+            return self.stack_offset == other.stack_offset
+        return False
+
 
 class RegisterLocation(ArgumentLocation):
+
+    _PRIORITY = 0
 
     def __str__(self) -> str:
         return self.register.name
@@ -47,8 +71,20 @@ class RegisterLocation(ArgumentLocation):
         The register which holds the argument.
         """
 
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RegisterLocation):
+            return self.register < other.register
+        return super().__lt__(other)
+
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RegisterLocation):
+            return self.register == other.register
+        return False
+
 
 class RegisterPairLocation(ArgumentLocation):
+
+    _PRIORITY = 1
 
     def __str__(self) -> str:
         return f"({', '.join(reg.name for reg in self.registers)})"
@@ -63,8 +99,20 @@ class RegisterPairLocation(ArgumentLocation):
         The pair of registers which holds the argument.
         """
 
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RegisterPairLocation):
+            return self.registers < other.registers
+        return super().__lt__(other)
+
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RegisterPairLocation):
+            return self.registers == other.registers
+        return False
+
 
 class RelativeRegisterLocation(RegisterLocation):
+
+    _PRIORITY = 2
 
     def __str__(self) -> str:
         return f"{self.register.name}[0x{self.offset:x}]"
@@ -79,8 +127,20 @@ class RelativeRegisterLocation(RegisterLocation):
         The offset within the register which holds the argument.
         """
 
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RelativeRegisterLocation):
+            return (self.register, self.offset) < (other.register, other.offset)
+        return super().__lt__(other)
+
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, RelativeRegisterLocation):
+            return (self.register, self.offset) == (other.register, other.offset)
+        return False
+
 
 class StaticLocation(ArgumentLocation):
+
+    _PRIORITY = 4
 
     def __str__(self) -> str:
         return f"0x{self.address:08x}"
@@ -95,3 +155,12 @@ class StaticLocation(ArgumentLocation):
         The global address which holds the argument.
         """
 
+    def __lt__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, StaticLocation):
+            return self.address < other.address
+        return super().__lt__(other)
+
+    def __eq__(self, other: ArgumentLocation) -> bool:
+        if isinstance(other, StaticLocation):
+            return self.address == other.address
+        return False

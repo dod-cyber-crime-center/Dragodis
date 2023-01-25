@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from functools import cached_property
 
-from typing import Iterable, Union, List, TYPE_CHECKING
+from typing import Iterable, Union, List, TYPE_CHECKING, Optional
 
 from dragodis.interface.flat import FlatAPI
-from dragodis.exceptions import NotExistError
+from dragodis.interface.reference import ReferenceType
+from dragodis.exceptions import NotExistError, UnsupportedError
 from .data_type import GhidraDataType
 from .disassembler import GhidraDisassembler, GhidraLocalDisassembler, GhidraRemoteDisassembler
 from .function import GhidraFunction
@@ -16,6 +17,7 @@ from .memory import GhidraMemory
 from .operand_value import GhidraRegister
 from .reference import GhidraReference
 from .segment import GhidraSegment
+from .string import GhidraString
 from .symbol import GhidraImport, GhidraExport
 from .variable import GhidraGlobalVariable
 
@@ -40,12 +42,26 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             raise NotExistError(f"Invalid address {hex(addr)}. Expect 32 bit integer, got {addr.bit_length()}")
 
     @property
+    def processor_name(self) -> str:
+        return str(self._program.getLanguage().getProcessor())
+
+    @property
+    def compiler_name(self) -> str:
+        return str(self._program.getCompiler())
+
+    @property
     def bit_size(self) -> int:
         return self._program.getDefaultPointerSize() * 8
 
     @property
     def is_big_endian(self) -> bool:
         return self._program.getLanguage().isBigEndian()
+
+    @property
+    def entry_point(self) -> Optional[int]:
+        for export in self.exports:
+            if export.name in ("entry", "_start"):
+                return export.address
 
     def get_virtual_address(self, file_offset: int) -> int:
         memory = self._program.getMemory()
@@ -89,6 +105,9 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             raise NotExistError(f"Cannot get byte at {hex(addr)}")
 
     def get_bytes(self, addr: int, length: int, default: int = None) -> bytes:
+        if length > 0x7fffffff:
+            # java int max value
+            raise ValueError(f"length of {length} is too big")
         from ghidra.program.model.mem import MemoryAccessException
         if default is None:
             try:
@@ -130,9 +149,22 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         return GhidraDataType(data_type)
 
     def get_function(self, addr: int) -> GhidraFunction:
-        function = self._flatapi.getFunctionContaining(self._to_addr(addr))
+        address = self._to_addr(addr)
+        function = self._flatapi.getFunctionContaining(address)
         if not function:
-            raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+            block = self._flatapi.getMemoryBlock(address)
+            if block is None or not block.isExecute():
+                raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+            # we've specifically been asked for a function containing this address
+            # Ghidra has failed to find it on its own so let's just create it ourselves
+            from ghidra.app.cmd.function import CreateFunctionCmd
+            from ghidra.util import UndefinedFunction
+            func = UndefinedFunction.findFunction(self._program, address, self._monitor)
+            if func is None:
+                raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+            cmd = CreateFunctionCmd(func.entryPoint, False)
+            cmd.applyTo(self._program, self._monitor)
+            function = cmd.getFunction()
         return GhidraFunction(self, function)
 
     def get_function_signature(self, addr: int) -> GhidraFunctionSignature:
@@ -150,6 +182,8 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
 
     def get_line(self, addr: int) -> GhidraLine:
         code_unit = self._listing.getCodeUnitContaining(self._to_addr(addr))
+        if code_unit is None:
+            raise NotExistError(f"Line at {hex(addr)} does not exist.")
         return GhidraLine(self, code_unit)
 
     def get_register(self, name: str) -> GhidraRegister:
@@ -188,6 +222,14 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         except Exception as e:
             raise RuntimeError(f"Failed to create a string at {hex(addr)} with error: {e}")
 
+    def strings(self, min_length=3) -> Iterable[GhidraString]:
+        # NOTE: Not using findStrings() because Ghidra has issues getting the right starting address for unicode strings.
+        data = self._flatapi.getFirstData()
+        while data:
+            if data.hasStringValue() and len(str(data.value)) >= min_length:
+                yield GhidraString(self, data)
+            data = self._flatapi.getDataAfter(data)
+
     def get_segment(self, addr_or_name: Union[int, str]) -> GhidraSegment:
         memory = self._program.getMemory()
         if isinstance(addr_or_name, str):
@@ -203,10 +245,16 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         else:
             raise ValueError(f"Invalid input: {addr_or_name!r}")
 
-        if not memory_block.isInitialized():
-            raise NotExistError(f"Memory block at {memory_block.getStart()} is not initialized.")
-
         return GhidraSegment(self, memory_block)
+
+    def create_segment(self, name: str, start: int, size: int) -> GhidraSegment:
+        memory = self._program.getMemory()
+        from ghidra.util.exception import UsrException
+        try:
+            memory_block = memory.createUninitializedBlock(name, self._to_addr(start), size, False)
+            return GhidraSegment(self, memory_block)
+        except UsrException as e:
+            raise ValueError(f"Failed to create segment with error: {e}")
 
     @property
     def max_address(self) -> int:
@@ -216,12 +264,12 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
     def min_address(self) -> int:
         return self._program.getMinAddress().getOffset()
 
+    @property
+    def base_address(self) -> int:
+        return self._program.getImageBase().getOffset()
+
     def open_memory(self, start: int, end: int) -> GhidraMemory:
         return GhidraMemory(self, start, end)
-
-    @property
-    def processor_name(self) -> str:
-        return str(self._program.getLanguage().getProcessor())
 
     def references_from(self, addr: int) -> Iterable[GhidraReference]:
         # TODO: cache chunks
@@ -237,6 +285,29 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         for reference in self._flatapi.getReferencesTo(self._to_addr(addr)):
             if reference.isMemoryReference():
                 yield GhidraReference(self, reference)
+
+    def create_reference(self, from_address: int, to_address: int, ref_type: ReferenceType) -> GhidraReference:
+        from ghidra.program.model.symbol import RefType, SourceType
+        try:
+            ref_type = {
+                ReferenceType.unknown: RefType.DATA,
+                ReferenceType.data: RefType.DATA,
+                ReferenceType.data_offset: RefType.DATA,
+                ReferenceType.data_write: RefType.WRITE,
+                ReferenceType.data_read: RefType.READ,
+                ReferenceType.data_text: RefType.DATA,
+                ReferenceType.data_informational: RefType.DATA,
+                ReferenceType.code_call: RefType.COMPUTED_CALL,
+                ReferenceType.code_jump: RefType.COMPUTED_JUMP,
+                ReferenceType.ordinary_flow: RefType.FALL_THROUGH,
+            }[ref_type]
+        except KeyError:
+            raise UnsupportedError(f"Reference type {ref_type} is unsupported.")
+        manager = self._program.getReferenceManager()
+        reference = manager.addMemoryReference(
+            self._to_addr(from_address), self._to_addr(to_address), ref_type, SourceType.USER_DEFINED, 0
+        )
+        return GhidraReference(self, reference)
 
     def get_variable(self, addr: int) -> GhidraGlobalVariable:
         data = self._flatapi.getDataContaining(self._to_addr(addr))

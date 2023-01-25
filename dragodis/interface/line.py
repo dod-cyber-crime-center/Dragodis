@@ -128,16 +128,16 @@ class Line(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def next(self) -> "Line":
+    def next(self) -> Optional["Line"]:
         """
-        The next line.
+        The next line (if it exists).
         """
 
     @property
     @abc.abstractmethod
-    def prev(self) -> "Line":
+    def prev(self) -> Optional["Line"]:
         """
-        The previous line.
+        The previous line (if it exists).
         """
 
     @abc.abstractmethod

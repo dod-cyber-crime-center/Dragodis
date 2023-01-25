@@ -22,8 +22,13 @@ class GhidraDisassembler(BackendDisassembler):
 
     name = BACKEND_GHIDRA
 
-    def __init__(self, input_path):
-        super().__init__(input_path)
+    PROCESSOR_ARM = "ARM:LE:32:v8"
+    PROCESSOR_ARM64 = "AARCH64:LE:64:v8A"
+    PROCESSOR_X86 = "x86:LE:32:default"
+    PROCESSOR_X64 = "x86:LE:64:default"
+
+    def __init__(self, input_path, processor=None):
+        super().__init__(input_path, processor=processor)
         # Build on start()
         self._flatapi = None     # type: Optional[ghidra.program.flatapi.FlatProgramAPI]
         self._program = None     # type: Optional[ghidra.program.database.ProgramDB]
@@ -36,13 +41,16 @@ class GhidraDisassembler(BackendDisassembler):
     # region Helper Functions
 
     def stop(self, *exc_info):
-        self._decomp_api.dispose()
+        if self.__decomp_api is not None:
+            # don't create one just to destroy it
+            self._decomp_api.dispose()
 
     @property
     def _decomp_api(self) -> "ghidra.app.decompiler.flatapi.FlatDecompilerAPI":
         if not self.__decomp_api:
             from ghidra.app.decompiler.flatapi import FlatDecompilerAPI
             self.__decomp_api = FlatDecompilerAPI(self._flatapi)
+            self.__decomp_api.initialize()
         return self.__decomp_api
 
     @property
@@ -64,7 +72,7 @@ class GhidraDisassembler(BackendDisassembler):
 
 class GhidraRemoteDisassembler(GhidraDisassembler):
 
-    def __init__(self, input_path, ghidra_path=None, **unused):
+    def __init__(self, input_path, ghidra_path=None, processor=None, **unused):
         """
         Initializes Ghidra disassembler.
 
@@ -72,7 +80,7 @@ class GhidraRemoteDisassembler(GhidraDisassembler):
         :param ghidra_path: Path to Ghidra directory.
             This may also be set using the environment variable GHIDRA_INSTALL_DIR
         """
-        super().__init__(input_path)
+        super().__init__(input_path, processor=processor)
         ghidra_path = ghidra_path or os.environ.get("GHIDRA_INSTALL_DIR", os.environ.get("GHIDRA_DIR"))
         if not ghidra_path:
             raise NotInstalledError(
@@ -90,7 +98,7 @@ class GhidraRemoteDisassembler(GhidraDisassembler):
             raise ValueError(f"Ghidra disassembler already running.")
 
         logger.debug(f"Starting pyhidra connection to {self.input_path}")
-        self._bridge = pyhidra.open_program(self.input_path)
+        self._bridge = pyhidra.open_program(self.input_path, language=self._processor)
         self._flatapi = self._bridge.__enter__()
         self._program = self._flatapi.getCurrentProgram()
         self._listing = self._program.getListing()
@@ -99,9 +107,9 @@ class GhidraRemoteDisassembler(GhidraDisassembler):
         logger.debug("Ghidra Disassembler ready!")
 
     def stop(self, *exc_info):
-        logger.debug("Shutting down Ghidra connection...")
         if not self._running:
             return
+        logger.debug("Shutting down Ghidra connection...")
         super().stop(*exc_info)
         self._bridge.__exit__(*exc_info)
         self._bridge = None

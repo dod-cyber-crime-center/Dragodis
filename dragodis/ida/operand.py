@@ -58,8 +58,12 @@ class IDAOperand(Operand):
 
         # No text indicates an implied operand, which *should* be a register but could be a phrase
         _value = self.value
-        if isinstance(_value, (IDARegister, IDAx86Phrase)):
-            return str(_value)
+        if isinstance(_value, IDARegister):
+            return _value.name
+
+        if isinstance(_value, IDAx86Phrase):
+            return _value.base
+
         raise AssertionError(f"Expected operand to be register or phrase, got: {_value!r}")
 
     @property

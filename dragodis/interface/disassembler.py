@@ -1,8 +1,11 @@
 
+from __future__ import annotations
 import abc
 import os
 import pathlib
 from typing import Union, Callable
+
+from dragodis.interface.types import ProcessorType
 
 
 class BackendDisassembler(metaclass=abc.ABCMeta):
@@ -14,10 +17,15 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
     """
 
     # This should be filled in.
-    # TODO: Enforce with zope.interface
-    name = None
+    name: str
 
-    def __init__(self, input_path: Union[str, pathlib.Path]):
+    # Common processor types dragodis supports.
+    PROCESSOR_ARM: str
+    PROCESSOR_ARM64: str
+    PROCESSOR_X86: str
+    PROCESSOR_X64: str
+
+    def __init__(self, input_path: Union[str, pathlib.Path], processor: Union[ProcessorType, str] = None):
         """
         Initialization method.
 
@@ -27,10 +35,15 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         starting a communications server would all be appropriate actions to
         perform here.
 
-        :param str input_path: The path of the file to process
+        :param input_path: The path of the file to process
+        :param processor: Processor spec to use. (defaults to auto-detection by underlying disassembler)
+
         :raises NotInstalledError: If the disassembler was not installed on the system.
         """
         self.input_path = pathlib.Path(input_path).resolve()
+        if processor:
+            processor = self._get_processor_spec(processor)
+        self._processor = processor
 
     def __enter__(self):
         """
@@ -46,6 +59,19 @@ class BackendDisassembler(metaclass=abc.ABCMeta):
         Used to create a context manager for the disassembler.
         """
         self.stop(*(exc_type, exc_value, exc_traceback))
+
+    def _get_processor_spec(self, processor: Union[ProcessorType, str]) -> str:
+        """
+        Generate the appropriate processor spec for the underlying disassembler.
+        """
+        if isinstance(processor, ProcessorType):
+            return {
+                ProcessorType.ARM: self.PROCESSOR_ARM,
+                ProcessorType.ARM64: self.PROCESSOR_ARM64,
+                ProcessorType.x86: self.PROCESSOR_X86,
+                ProcessorType.x64: self.PROCESSOR_X64,
+            }[processor]
+        return processor
 
     def start(self):
         """

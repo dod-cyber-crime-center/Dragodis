@@ -2,7 +2,7 @@
 from __future__ import annotations
 import abc
 from enum import IntEnum, auto
-from typing import TYPE_CHECKING, List, Iterable, Type
+from typing import TYPE_CHECKING, List, Iterable, Type, Optional
 
 import capstone
 

@@ -49,7 +49,11 @@ class GhidraRegisterPairLocation(RegisterPairLocation, GhidraArgumentLocation):
         return GhidraRegister(reg1), GhidraRegister(reg2)
 
 
-class GhidraRelativeRegisterLocation(RelativeRegisterLocation, GhidraRegisterLocation):
+class GhidraRelativeRegisterLocation(RelativeRegisterLocation, GhidraArgumentLocation):
+
+    @property
+    def register(self) -> GhidraRegister:
+        return GhidraRegister(self._storage.getRegister())
 
     @property
     def offset(self) -> int:

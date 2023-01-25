@@ -110,14 +110,16 @@ class IDALine(Line):
             self.type = type_
 
     @property
-    def next(self) -> "IDALine":
+    def next(self) -> Optional["IDALine"]:
         addr = self._ida._idc.next_head(self.address)
-        return IDALine(self._ida, addr)
+        if addr != self._ida._BADADDR:
+            return IDALine(self._ida, addr)
 
     @property
-    def prev(self) -> "IDALine":
+    def prev(self) -> Optional["IDALine"]:
         addr = self._ida._idc.prev_head(self.address)
-        return IDALine(self._ida, addr)
+        if addr != self._ida._BADADDR:
+            return IDALine(self._ida, addr)
 
     def set_comment(self, comment: Optional[str], comment_type=CommentType.eol):
         # IDA takes an empty string to clear comments

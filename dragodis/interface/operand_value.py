@@ -5,8 +5,9 @@ NOTE: Some of these are interfaces that must be subclassed to be implemented bas
     the underlying disassembler.
     Others can be used directly.
 """
-
+from __future__ import annotations
 import abc
+from functools import total_ordering
 from typing import Optional, Union, List
 
 
@@ -14,6 +15,16 @@ class OperandValue(metaclass=abc.ABCMeta):
     """
     Base class for all possible operand value types.
     """
+
+    def __int__(self):
+        """
+        Operand values can be casted to int to get a sane value based on type.
+        (This is equivalent to IDA's idc.get_operand_value() function)
+
+        WARNING: Not all OperandValue subclasses have an equivalent int value (e.g. Register),
+        in which case it will return a -1.
+        """
+        return -1
 
 
 class Immediate(int, OperandValue):
@@ -41,6 +52,7 @@ class MemoryReference(int, OperandValue):
         return f"<MemoryReference {self}>"
 
 
+@total_ordering
 class Register(OperandValue, metaclass=abc.ABCMeta):
     """
     Register objects represent the register components of operands.
@@ -53,13 +65,26 @@ class Register(OperandValue, metaclass=abc.ABCMeta):
         return f"<Register {self.name} - bit_width={self.bit_width}>"
 
     @abc.abstractmethod
-    def __eq__(self, register: "Register"):
+    def __eq__(self, register: Register):
         ...
+
+    def __lt__(self, other: Register):
+        return (self.base.name, self.mask) < (other.base.name, other.mask)
+
+    @property
+    @abc.abstractmethod
+    def base(self) -> Register:
+        """The full size register in this register's family."""
 
     @property
     @abc.abstractmethod
     def bit_width(self) -> int:
         """The total number of bits for this register."""
+
+    @property
+    @abc.abstractmethod
+    def mask(self) -> int:
+        """A mask indicating the applicable bits for this register within the base register."""
 
     @property
     @abc.abstractmethod
@@ -94,6 +119,9 @@ class Phrase(OperandValue):
     """
 
     # TODO: For capstone, x86 had "segment" and ARM had "lshift"
+
+    def __int__(self):
+        return self.offset
 
     def __str__(self) -> str:
         segments = []

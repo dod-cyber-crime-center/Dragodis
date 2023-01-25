@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 from dragodis.exceptions import NotExistError
 from dragodis.ghidra.operand import GhidraOperand, GhidraARMOperand, Ghidrax86Operand
@@ -107,6 +107,8 @@ class GhidraInstruction(Instruction):
         if flow_type.isCall() and flow_type.isUnConditional():
             # the delta we are looking for is actually stored in the function and not the instruction
             flows = self._instruction.getFlows()
+            if not flows:
+                return delta
             if len(flows) == 1:
                 func = self._ghidra._flatapi.getFunctionAt(flows[0])
                 # If function has a call fixup, getStackPurgeSize() will be wrong.

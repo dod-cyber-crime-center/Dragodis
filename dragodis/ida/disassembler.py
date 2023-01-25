@@ -23,7 +23,8 @@ from rpyc.utils import factory
 
 from dragodis.exceptions import DragodisError, NotInstalledError
 from dragodis.interface import BackendDisassembler
-from dragodis.ida import ida_server
+from dragodis.interface.types import ProcessorType
+from dragodis.ida import ida_server, constants
 from dragodis.constants import BACKEND_IDA
 from dragodis import utils
 
@@ -33,6 +34,8 @@ if typing.TYPE_CHECKING:
     import idaapi
     import idc
     import idautils
+    import ida_auto
+    import ida_bitrange
     import ida_bytes
     import ida_funcs
     import ida_gdl
@@ -85,10 +88,17 @@ class IDADisassembler(BackendDisassembler):
     """
     name = BACKEND_IDA
 
+    PROCESSOR_ARM = constants.PROCESSOR_ARM
+    PROCESSOR_ARM64 = constants.PROCESSOR_ARM
+    PROCESSOR_X86 = constants.PROCESSOR_METAPC
+    PROCESSOR_X64 = constants.PROCESSOR_METAPC
+
     _BADADDR: int
     _idaapi: idaapi
     _idc: idc
     _idautils: idautils
+    _ida_auto: ida_auto
+    _ida_bitrange: ida_bitrange
     _ida_bytes: ida_bytes
     _ida_funcs: ida_funcs
     _ida_gdl: ida_gdl
@@ -136,6 +146,10 @@ class IDALocalDisassembler(IDADisassembler):
         self._idaapi = idaapi
         import idautils
         self._idautils = idautils
+        import ida_auto
+        self._ida_auto = ida_auto
+        import ida_bitrange
+        self._ida_bitrange = ida_bitrange
         import ida_bytes
         self._ida_bytes = ida_bytes
         import ida_funcs
@@ -144,6 +158,8 @@ class IDALocalDisassembler(IDADisassembler):
         self._ida_gdl = ida_gdl
         import ida_name
         self._ida_name = ida_name
+        import ida_xref
+        self._ida_xref = ida_xref
         import ida_ua
         self._ida_ua = ida_ua
         import ida_idp
@@ -190,7 +206,7 @@ class IDARemoteDisassembler(IDADisassembler):
         "sync_request_timeout": 60
     }
 
-    def __init__(self, input_path, is_64_bit=None, ida_path=None, timeout=None, **unused):
+    def __init__(self, input_path, is_64_bit=None, ida_path=None, timeout=None, processor=None, **unused):
         """
         Initializes IDA disassembler.
 
@@ -200,8 +216,10 @@ class IDARemoteDisassembler(IDADisassembler):
         :param ida_path: Path to IDA directory.
             This may also be set using the environment variable IDA_INSTALL_DIR
         :param timeout: Number of seconds to wait for remote results. (defaults to 60)
+        :param processor: Processor type (defaults to auto detected)
+            (https://hex-rays.com/products/ida/support/idadoc/618.shtml)
         """
-        super().__init__(input_path)
+        super().__init__(input_path, processor=processor)
         self._ida_path = ida_path or os.environ.get("IDA_INSTALL_DIR", os.environ.get("IDA_DIR"))
         if not self._ida_path:
             raise NotInstalledError(
@@ -221,10 +239,15 @@ class IDARemoteDisassembler(IDADisassembler):
                 is_64_bit = True
             elif input_path.endswith(".idb"):
                 is_64_bit = False
+            elif processor in (ProcessorType.ARM64, ProcessorType.x64):
+                is_64_bit = True
+            elif processor in (ProcessorType.ARM, ProcessorType.x86):
+                is_64_bit = False
             else:
                 is_64_bit = utils.is_64_bit(input_path)
 
         # Find ida executable within ida_dir.
+        # TODO: Should we just always open with ida64?
         ida_exe_re = re.compile(r"idaq?64(\.exe)?$" if is_64_bit else r"idaq?(\.exe)?$")
         for filename in os.listdir(self._ida_path):
             if ida_exe_re.match(filename):
@@ -244,10 +267,13 @@ class IDARemoteDisassembler(IDADisassembler):
         self._idaapi = None
         self._idc = None
         self._idautils = None
+        self._ida_auto = None
+        self._ida_bitrange = None
         self._ida_bytes = None
         self._ida_funcs = None
         self._ida_gdl = None
         self._ida_name = None
+        self._ida_xref = None
         self._ida_ua = None
         self._ida_idp = None
         self._ida_ida = None
@@ -272,10 +298,13 @@ class IDARemoteDisassembler(IDADisassembler):
             self._idaapi = idaapi
             self._idc = idc
             self._idautils = idautils
+            self._ida_auto = ida_auto
+            self._ida_bitrange = ida_bitrange
             self._ida_bytes = ida_bytes
             self._ida_funcs = ida_funcs
             self._ida_gdl = ida_gdl
             self._ida_name = ida_name
+            self._ida_xref = ida_xref
             self._ida_ua = ida_ua
             self._ida_idp = ida_idp
             self._ida_ida = ida_ida
@@ -308,6 +337,8 @@ class IDARemoteDisassembler(IDADisassembler):
         self._idaapi: idaapi = _Cached(self._bridge.root.getmodule("idaapi"))
         self._idc: idc = _Cached(self._bridge.root.getmodule("idc"))
         self._idautils: idautils = _Cached(self._bridge.root.getmodule("idautils"))
+        self._ida_auto: ida_auto = _Cached(self._bridge.root.getmodule("ida_auto"))
+        self._ida_bitrange: ida_bitrange = _Cached(self._bridge.root.getmodule("ida_bitrange"))
         self._ida_bytes: ida_bytes = _Cached(self._bridge.root.getmodule("ida_bytes"))
         self._ida_funcs: ida_funcs = _Cached(self._bridge.root.getmodule("ida_funcs"))
         self._ida_gdl: ida_gdl = _Cached(self._bridge.root.getmodule("ida_gdl"))
@@ -384,11 +415,6 @@ class IDARemoteDisassembler(IDADisassembler):
             pipe_name = str(uuid.uuid4())
         else:
             socket_path = tempfile.mktemp(prefix="dragodis_")
-            # FIXME: We are also going to temporarily disable the garbage collector
-            #   due to issues with the connection prematurely ending, causing EOFError's to occur.
-            #   Disabling the garbage collector seems to fix this (github.com/tomerfiliba-org/rpyc/issues/237)
-            #   Hopefully a proper fix is in our future.
-            gc.disable()
 
         # We need to temporarily change the current directory to be within the ida path so we don't
         # have spaces in script file path.
@@ -405,8 +431,10 @@ class IDARemoteDisassembler(IDADisassembler):
                 "-A",
                 f'-S""{script_path}" "{pipe_name or socket_path}""',
                 f'-L"{self.input_path}_ida.log"',
-                f'"{self.input_path}"',  # Input file MUST be last!
             ]
+            if self._processor:
+                command.append(f"-p{self._processor}")
+            command.append(f'"{self.input_path}"')  # Input file MUST be last!
 
             command = " ".join(command)
             logger.debug(f"Running IDA with command: {command}")
@@ -458,7 +486,6 @@ class IDARemoteDisassembler(IDADisassembler):
         if self._socket_path:
             os.remove(self._socket_path)
             self._socket_path = None
-            gc.enable()
 
         self._running = False
         logger.debug("IDA Bridge server closed.")
