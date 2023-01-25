@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2023-01-25
 - Add equality handling for `Function` objects based on start address.
 - Added `Disassembler.create_segment()` for creating a basic segment memory block.
 - Added `Disassembler.create_reference()` for creating memory cross-references.
@@ -114,7 +114,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.3...0.6.0
 [0.5.3]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.1...0.5.2
