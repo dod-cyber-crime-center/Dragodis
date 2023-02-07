@@ -32,9 +32,11 @@ class IDAFunctionSignature(FunctionSignature):
         0x70: "__fastcall",
         0x80: "__thiscall",
         0xB0: "__golang",
+        0xD0: "__usercall",
         0xE0: "__userpurge",
         0xF0: "__usercall",
     }
+    # _cc_map_inv will end up with __usercall as 0xf0, which is the more sensible default
     _cc_map_inv = {name: opcode for opcode, name in _cc_map.items()}
 
     def __init__(self, ida: IDAFlatAPI, address: int):
