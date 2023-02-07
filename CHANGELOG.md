@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.7.1] - 2023-02-07
-- Fix bug by adding alternate calling convention constant for `__usercall` in IDA - @ddash-ct
+- Add missing [CM_CC_SPECIALE](https://hex-rays.com/products/ida/support/idapython_docs/ida_typeinf.html#ida_typeinf.CM_CC_SPECIALE) enum for a usercall with an ellipse - @ddash-ct
 
 
 ## [0.7.0] - 2023-01-25
