@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.1] - 2023-02-07
+- Fix bug by adding alternate calling convention constant for `__usercall` in IDA - @ddash-ct
+
+
 ## [0.7.0] - 2023-01-25
 - Add equality handling for `Function` objects based on start address.
 - Added `Disassembler.create_segment()` for creating a basic segment memory block.
@@ -114,7 +118,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.1...HEAD
+[0.7.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.3...0.6.0
 [0.5.3]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.2...0.5.3
