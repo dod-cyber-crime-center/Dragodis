@@ -22,6 +22,7 @@ Submodules
    interface.reference
    interface.segment
    interface.stack
+   interface.string
    interface.structure
    interface.symbol
    interface.types

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.2] - 2023-02-21
 - Tested on Ghidra 10.2.3
 - Fixed support for fpu operands using IDA.
 - Removed caching of IDA netref modules to fix memory leak issues.
@@ -124,7 +124,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.2...HEAD
+[0.7.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.5.3...0.6.0
