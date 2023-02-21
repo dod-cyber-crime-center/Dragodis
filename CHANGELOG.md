@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+- Tested on Ghidra 10.2.3
+- Fixed support for fpu operands using IDA.
+- Removed caching of IDA netref modules to fix memory leak issues.
+
+
 ## [0.7.1] - 2023-02-07
 - Add missing [CM_CC_SPECIALE](https://hex-rays.com/products/ida/support/idapython_docs/ida_typeinf.html#ida_typeinf.CM_CC_SPECIALE) enum for a usercall with an ellipse - @ddash-ct
 

@@ -307,9 +307,9 @@ For brevity, some details and differences in results get glossed over here. Plea
 
 
 ### Strings
-| Dragodis*                 | IDA                                                           | Ghidra                                |
-|---------------------------|---------------------------------------------------------------|---------------------------------------|
-| dis.strings(min_length=5) | finder = idautils.Strings(); finder.setup(minlen=5); list(sc) | findStrings(None, 5, 1, False, True)  |
+| Dragodis*                 | IDA                                                               | Ghidra                                |
+|---------------------------|-------------------------------------------------------------------|---------------------------------------|
+| dis.strings(min_length=5) | finder = idautils.Strings(); finder.setup(minlen=5); list(finder) | findStrings(None, 5, 1, False, True)  |
 
 
 \* `dis` in the dragodis column represents the open disassembler object retrieved from `dragodis.open_program()`

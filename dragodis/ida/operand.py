@@ -39,6 +39,7 @@ class IDAOperand(Operand):
         self._addr = addr
         self._index = index
         self._op_t = op_t
+        self.__op_type = None
 
     @property
     def address(self) -> int:
@@ -58,23 +59,28 @@ class IDAOperand(Operand):
 
         # No text indicates an implied operand, which *should* be a register but could be a phrase
         _value = self.value
-        if isinstance(_value, IDARegister):
-            return _value.name
-
-        if isinstance(_value, IDAx86Phrase):
-            return _value.base
+        if isinstance(_value, (IDARegister, IDAx86Phrase)):
+            return str(_value)
 
         raise AssertionError(f"Expected operand to be register or phrase, got: {_value!r}")
 
     @property
+    def _op_type(self):
+        """
+        Return IDA op_t.type constant.
+        """
+        if self.__op_type is None:
+            # NOTE: Getting operand type using get_operand_type() instead of _op_t.type because
+            #   there are strange issues where `_op_t.type` will sometimes give us something completely wrong.
+            self.__op_type = self._ida._idc.get_operand_type(self._addr, self._index)
+        return self.__op_type
+
+    @property
     def type(self) -> OperandType:
-        # NOTE: Getting operand type using get_operand_type() instead of _op_t.type because
-        #   there are strange issues where `_op_t.type` will sometimes give us something completely wrong.
-        op_type = self._ida._idc.get_operand_type(self._addr, self._index)
         try:
-            return self._type_map[op_type]
+            return self._type_map[self._op_type]
         except KeyError:
-            raise RuntimeError(f"Unexpected operand type: {op_type}")
+            raise RuntimeError(f"Unexpected operand type: {self._op_type}")
 
     @property
     def value(self) -> OperandValue:
@@ -171,6 +177,12 @@ class IDAARMOperand(IDAOperand, ARMOperand):
 
 class IDAx86Operand(IDAOperand, x86Operand):
 
+    # Append x86 specific operand types.
+    _type_map = {
+        **IDAOperand._type_map,
+        11: OperandType.register,   # ida_intel.o_fpreg
+    }
+
     @property
     def type(self) -> OperandType:
         # For x86, there is a weird corner case, where we could have something like
@@ -192,6 +204,11 @@ class IDAx86Operand(IDAOperand, x86Operand):
     def value(self) -> OperandValue:
         # Get value for x86 specific types.
         operand_type = self.type
+
+        # From what we can tell, FPU registers have their .reg value relative to the R_st0 constant.
+        if operand_type == OperandType.register and self._op_type == 11:  # ida_intel.o_fpreg
+            reg = self._ida._ida_intel.RegNo.R_st0 + self._op_t.reg
+            return IDARegister(self._ida, reg, 10)
 
         if operand_type == OperandType.phrase:  # o_phrase/o_displ
             return IDAx86Phrase(self._ida, self.instruction._insn_t, self._op_t)

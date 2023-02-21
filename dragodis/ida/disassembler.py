@@ -61,27 +61,6 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class _Cached:
-    """
-    Caches attributes for a given rpyc netref to avoid excess socket calls.
-    """
-
-    def __init__(self, netref: rpyc.BaseNetref):
-        self._cache = {}
-        self._netref = netref
-
-    def __getattribute__(self, name):
-        cache = super().__getattribute__("_cache")
-        try:
-            ret = cache[name]
-            return ret
-        except KeyError:
-            netref = super().__getattribute__("_netref")
-            ret = getattr(netref, name)
-            cache[name] = ret
-            return ret
-
-
 class IDADisassembler(BackendDisassembler):
     """
     Backend IDA disassembler (interface)
@@ -334,37 +313,37 @@ class IDARemoteDisassembler(IDADisassembler):
         remote_logger.setLevel(logger.getEffectiveLevel())
 
         # Import IDA modules.
-        self._idaapi: idaapi = _Cached(self._bridge.root.getmodule("idaapi"))
-        self._idc: idc = _Cached(self._bridge.root.getmodule("idc"))
-        self._idautils: idautils = _Cached(self._bridge.root.getmodule("idautils"))
-        self._ida_auto: ida_auto = _Cached(self._bridge.root.getmodule("ida_auto"))
-        self._ida_bitrange: ida_bitrange = _Cached(self._bridge.root.getmodule("ida_bitrange"))
-        self._ida_bytes: ida_bytes = _Cached(self._bridge.root.getmodule("ida_bytes"))
-        self._ida_funcs: ida_funcs = _Cached(self._bridge.root.getmodule("ida_funcs"))
-        self._ida_gdl: ida_gdl = _Cached(self._bridge.root.getmodule("ida_gdl"))
-        self._ida_name: ida_name = _Cached(self._bridge.root.getmodule("ida_name"))
-        self._ida_xref: ida_xref = _Cached(self._bridge.root.getmodule("ida_xref"))
-        self._ida_ua: ida_ua = _Cached(self._bridge.root.getmodule("ida_ua"))
-        self._ida_idp: ida_idp = _Cached(self._bridge.root.getmodule("ida_idp"))
-        self._ida_ida: ida_ida = _Cached(self._bridge.root.getmodule("ida_ida"))
-        self._ida_lines: ida_lines = _Cached(self._bridge.root.getmodule("ida_lines"))
-        self._ida_nalt: ida_nalt = _Cached(self._bridge.root.getmodule("ida_nalt"))
-        self._ida_hexrays: ida_hexrays = _Cached(self._bridge.root.getmodule("ida_hexrays"))
-        self._ida_segment: ida_segment = _Cached(self._bridge.root.getmodule("ida_segment"))
-        self._ida_loader: ida_loader = _Cached(self._bridge.root.getmodule("ida_loader"))
-        self._ida_typeinf: ida_typeinf = _Cached(self._bridge.root.getmodule("ida_typeinf"))
-        self._ida_entry: ida_entry = _Cached(self._bridge.root.getmodule("ida_entry"))
-        self._ida_struct: ida_struct = _Cached(self._bridge.root.getmodule("ida_struct"))
-        self._ida_frame: ida_frame = _Cached(self._bridge.root.getmodule("ida_frame"))
-        self._ida_search: ida_search = _Cached(self._bridge.root.getmodule("ida_search"))
+        self._idaapi: idaapi = self._bridge.root.getmodule("idaapi")
+        self._idc: idc = self._bridge.root.getmodule("idc")
+        self._idautils: idautils = self._bridge.root.getmodule("idautils")
+        self._ida_auto: ida_auto = self._bridge.root.getmodule("ida_auto")
+        self._ida_bitrange: ida_bitrange = self._bridge.root.getmodule("ida_bitrange")
+        self._ida_bytes: ida_bytes = self._bridge.root.getmodule("ida_bytes")
+        self._ida_funcs: ida_funcs = self._bridge.root.getmodule("ida_funcs")
+        self._ida_gdl: ida_gdl = self._bridge.root.getmodule("ida_gdl")
+        self._ida_name: ida_name = self._bridge.root.getmodule("ida_name")
+        self._ida_xref: ida_xref = self._bridge.root.getmodule("ida_xref")
+        self._ida_ua: ida_ua = self._bridge.root.getmodule("ida_ua")
+        self._ida_idp: ida_idp = self._bridge.root.getmodule("ida_idp")
+        self._ida_ida: ida_ida = self._bridge.root.getmodule("ida_ida")
+        self._ida_lines: ida_lines = self._bridge.root.getmodule("ida_lines")
+        self._ida_nalt: ida_nalt = self._bridge.root.getmodule("ida_nalt")
+        self._ida_hexrays: ida_hexrays = self._bridge.root.getmodule("ida_hexrays")
+        self._ida_segment: ida_segment = self._bridge.root.getmodule("ida_segment")
+        self._ida_loader: ida_loader = self._bridge.root.getmodule("ida_loader")
+        self._ida_typeinf: ida_typeinf = self._bridge.root.getmodule("ida_typeinf")
+        self._ida_entry: ida_entry = self._bridge.root.getmodule("ida_entry")
+        self._ida_struct: ida_struct = self._bridge.root.getmodule("ida_struct")
+        self._ida_frame: ida_frame = self._bridge.root.getmodule("ida_frame")
+        self._ida_search: ida_search = self._bridge.root.getmodule("ida_search")
 
         # Need to first add our custom sdk package to the path to import custom modules.
         from . import sdk
         self._bridge.modules.sys.path.extend(sdk.__path__)
 
-        self._ida_arm: ida_arm = _Cached(self._bridge.root.getmodule("ida_arm"))
-        self._ida_intel: ida_intel = _Cached(self._bridge.root.getmodule("ida_intel"))
-        self._ida_helpers: ida_helpers = _Cached(self._bridge.root.getmodule("ida_helpers"))
+        self._ida_arm: ida_arm = self._bridge.root.getmodule("ida_arm")
+        self._ida_intel: ida_intel = self._bridge.root.getmodule("ida_intel")
+        self._ida_helpers: ida_helpers = self._bridge.root.getmodule("ida_helpers")
 
     def unix_connect(self, socket_path, retry=10) -> rpyc.Connection:
         """
@@ -475,6 +454,32 @@ class IDARemoteDisassembler(IDADisassembler):
         self._bridge.close()
         self._root = None
         self._bridge = None
+        self._idaapi = None
+        self._idc = None
+        self._idautils = None
+        self._ida_auto = None
+        self._ida_bitrange = None
+        self._ida_bytes = None
+        self._ida_funcs = None
+        self._ida_gdl = None
+        self._ida_name = None
+        self._ida_xref = None
+        self._ida_ua = None
+        self._ida_idp = None
+        self._ida_ida = None
+        self._ida_lines = None
+        self._ida_nalt = None
+        self._ida_hexrays = None
+        self._ida_segment = None
+        self._ida_loader = None
+        self._ida_typeinf = None
+        self._ida_entry = None
+        self._ida_struct = None
+        self._ida_frame = None
+        self._ida_search = None
+        self._ida_arm = None
+        self._ida_intel = None
+        self._ida_helpers = None
 
         # Wait for server to shutdown completely.
         try:
