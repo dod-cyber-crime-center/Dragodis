@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+- Updated Ghidra support to 10.3.2 and 10.4
+- Added automatic activation of virtualenv within IDA process if one is detected.
+- Added `Disassembler.create_function()` for defining a new function.
+- Added `Disassembler.undefine()` and `Function.undefine()` for clearing any defined bytes at a given address range.
+- Added `default` argument for most `get_*()` functions.
+- Added `end` argument to `find_bytes()`.
+- Changed `Segment.lines()` to be a function instead of a property.
+- Changed `Function` name setting to use `ida_name.force_name` to avoid errors on duplicate names. (Better matches Ghidra behavior)
+
+
 ## [0.7.2] - 2023-02-21
 - Tested on Ghidra 10.2.3
 - Fixed support for fpu operands using IDA.

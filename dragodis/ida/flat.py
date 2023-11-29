@@ -7,7 +7,7 @@ from .. import utils
 
 from typing import Iterable, Union, Optional
 
-from dragodis.interface.flat import FlatAPI
+from dragodis.interface.flat import FlatAPI, MISSING
 from dragodis.exceptions import NotExistError
 from .data_type import IDADataType
 from .disassembler import IDADisassembler, IDARemoteDisassembler, IDALocalDisassembler
@@ -73,17 +73,21 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             return address
 
     @cache
-    def get_virtual_address(self, file_offset: int) -> int:
+    def get_virtual_address(self, file_offset: int, default=MISSING) -> int:
         addr = self._ida_loader.get_fileregion_ea(file_offset)
         if addr == self._idc.BADADDR:
-            raise NotExistError(f"Cannot get linear address for file offset: {hex(file_offset)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get linear address for file offset: {hex(file_offset)}")
+            return default
         return addr
 
     @cache
-    def get_file_offset(self, addr: int) -> int:
+    def get_file_offset(self, addr: int, default=MISSING) -> int:
         file_offset = self._ida_loader.get_fileregion_offset(addr)
         if file_offset == -1:
-            raise NotExistError(f"Cannot get file offset for address: {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get file offset for address: {hex(addr)}")
+            return default
         return file_offset
 
     def functions(self, start=None, end=None) -> Iterable[IDAFunction]:
@@ -99,9 +103,11 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
 
     # TODO: make a Memory object?
 
-    def get_byte(self, addr: int) -> int:
+    def get_byte(self, addr: int, default=MISSING) -> int:
         if not self._bytes_loaded(addr, 1):
-            raise NotExistError(f"Cannot get byte at {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get byte at {hex(addr)}")
+            return default
         return self._ida_bytes.get_wide_byte(addr)
 
     def get_bytes(self, addr: int, length: int, default: int = None) -> bytes:
@@ -118,19 +124,21 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         #     default = bytes([default])
         # return self._cached_memory.get(addr, length, fill_pattern=default)
 
-    def find_bytes(self, pattern: bytes, start: int = None, reverse=False) -> int:
+    def find_bytes(self, pattern: bytes, start: int = None, end: int = None, reverse=False) -> int:
         # Convert bytes pattern into hex separated by space format that IDA likes.
         pattern = " ".join(format(byte, "02X") for byte in pattern)
         if reverse:
             flag = self._ida_search.SEARCH_UP
             if start is None:
                 start = self.max_address
-            end = self.min_address
+            if end is None:
+                end = self.min_address
         else:
             flag = self._ida_search.SEARCH_DOWN
             if start is None:
                 start = self.min_address
-            end = self.max_address
+            if end is None:
+                end = self.max_address
 
         found = self._ida_search.find_binary(start, end, pattern, 16, flag)
         if found == self._BADADDR:
@@ -153,47 +161,85 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             raise NotExistError(f"Cannot get qword at {hex(addr)}")
         return self._ida_bytes.get_qword(addr)
 
-    def get_function(self, addr: int) -> IDAFunction:
+    def get_function(self, addr: int, default=MISSING) -> IDAFunction:
         func_t = self._ida_funcs.get_func(addr)
         if not func_t:
-            raise NotExistError(f"Function does not exist at {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Function does not exist at {hex(addr)}")
+            return default
         return IDAFunction(self, func_t)
 
-    def get_function_by_name(self, name: str, ignore_underscore: bool = True) -> IDAFunction:
+    def get_function_by_name(self, name: str, ignore_underscore: bool = True, default=MISSING) -> IDAFunction:
         # Using ida_helpers instead of default implementation to improve performance.
         func_t = self._ida_helpers.get_function_by_name(name, ignore_underscore=ignore_underscore)
         if func_t is None:
-            raise NotExistError(f"Unable to find function with name: {name}")
+            if default is MISSING:
+                raise NotExistError(f"Unable to find function with name: {name}")
+            return default
         return IDAFunction(self, func_t)
+
+    def create_function(self, start: int, end: int = None, *, default=MISSING) -> IDAFunction:
+        # Creates new function.
+        # IDA will try to determine the function bounds by calling find_func_bounds() if end is BADADDR.
+        success = self._ida_funcs.add_func(start, end or self._BADADDR)
+        if not success:
+            if default is MISSING:
+                if end:
+                    raise ValueError(f"Unable to create function at {hex(start)}->{hex(end)}")
+                else:
+                    raise ValueError(f"Unable to create function at {hex(start)}")
+            return default
+
+        # Ensure all code is analyzed.
+        func = self._ida_funcs.get_func(start)
+        self._ida_auto.plan_and_wait(func.start_ea, func.end_ea)
+
+        return IDAFunction(self, func)
 
     # TODO: Add support for providing an operand to help get a better function signature type.
     @cache
-    def get_function_signature(self, addr: int) -> IDAFunctionSignature:
+    def get_function_signature(self, addr: int, default=MISSING) -> IDAFunctionSignature:
         # Constructor will raise a NotExistError if we can't make a function signature.
-        return IDAFunctionSignature(self, addr)
+        try:
+            return IDAFunctionSignature(self, addr)
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_line(self, addr: int) -> IDALine:
-        return IDALine(self, addr)
+    def get_line(self, addr: int, default=MISSING) -> IDALine:
+        try:
+            return IDALine(self, addr)
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_register(self, name: str) -> IDARegister:
+    def get_register(self, name: str, default=MISSING) -> IDARegister:
         reg_info = self._ida_idp.reg_info_t()
         success = self._ida_idp.parse_reg_name(reg_info, name)
         if not success:
-            raise NotExistError(f"Invalid register name: {name}")
+            if default is MISSING:
+                raise NotExistError(f"Invalid register name: {name}")
+            return default
         return IDARegister(self, reg_info.reg, reg_info.size)
 
     @cache
-    def get_segment(self, addr_or_name: Union[int, str]) -> IDASegment:
+    def get_segment(self, addr_or_name: Union[int, str], default=MISSING) -> IDASegment:
         if isinstance(addr_or_name, str):
             name = addr_or_name
             segment_t = self._ida_segment.get_segm_by_name(name)
             if not segment_t:
-                raise NotExistError(f"Could not find segment with name: {name}")
+                if default is MISSING:
+                    raise NotExistError(f"Could not find segment with name: {name}")
+                return default
         elif isinstance(addr_or_name, int):
             addr = addr_or_name
             segment_t = self._ida_segment.getseg(addr)
             if not segment_t:
-                raise NotExistError(f"Could not find segment containing address: 0x{addr:08x}")
+                if default is MISSING:
+                    raise NotExistError(f"Could not find segment containing address: 0x{addr:08x}")
+                return default
         else:
             raise ValueError(f"Invalid input: {addr_or_name!r}")
 
@@ -214,7 +260,7 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             if seg:
                 yield IDASegment(self, seg)
 
-    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None) -> bytes:
+    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None, default=MISSING) -> bytes:
         if bit_width is None:
             str_type = self._idc.get_str_type(addr)
         elif bit_width == 8:
@@ -231,7 +277,11 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
                 addr, str_type,
                 self._ida_bytes.ALOPT_IGNCLT | self._ida_bytes.ALOPT_IGNPRINT | self._ida_bytes.ALOPT_MAX4K
             )
-
+        ret = self._ida_bytes.get_strlit_contents(addr, length, str_type)
+        if ret is None:
+            if default is MISSING:
+                raise NotExistError(f"Unable to obtain string bytes at 0x{addr:08x}")
+            return default
         return self._ida_bytes.get_strlit_contents(addr, length, str_type)
 
     def strings(self, min_length=3) -> Iterable[IDAString]:
@@ -253,7 +303,7 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         for string in sc:
             yield IDAString(self, string)
 
-    def get_data_type(self, name: str) -> IDADataType:
+    def get_data_type(self, name: str, default=MISSING) -> IDADataType:
         is_ptr = name.endswith("*")
         name = name.strip(" *")
 
@@ -264,7 +314,9 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         tif = self._ida_typeinf.tinfo_t()
         success = tif.get_named_type(self._ida_typeinf.get_idati(), name)
         if not success:
-            raise NotExistError(f"Invalid data type: {name}")
+            if default is MISSING:
+                raise NotExistError(f"Invalid data type: {name}")
+            return default
 
         # If a pointer, create another tinfo object that is the pointer of the first.
         if is_ptr:
@@ -334,7 +386,7 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
 
         return reference
 
-    def get_variable(self, addr: int) -> IDAGlobalVariable:
+    def get_variable(self, addr: int, default=MISSING) -> IDAGlobalVariable:
         start_address = self._ida_bytes.get_item_head(addr)
         # Don't count code as "variables". Otherwise we get all the
         # loop labels as variables.
@@ -343,19 +395,23 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
         # Only count as variable if item has a name.
         if not is_code and self._ida_name.get_name(start_address):
             return IDAGlobalVariable(self, start_address)
-        else:
+        elif default is MISSING:
             raise NotExistError(f"Variable doesn't exist at {hex(addr)}")
+        else:
+            return default
 
     @property
     def imports(self) -> Iterable[IDAImport]:
         for address, thunk_address, name, namespace in self._ida_helpers.iter_imports():
             yield IDAImport(self, address, thunk_address, name, namespace)
 
-    def get_import(self, name: str) -> IDAImport:
+    def get_import(self, name: str, default=MISSING) -> IDAImport:
         # Using ida_helpers instead of default implementation to improve performance.
         ret = self._ida_helpers.get_import(name)
         if ret is None:
-            raise NotExistError(f"Import with name '{name}' doesn't exist.")
+            if default is MISSING:
+                raise NotExistError(f"Import with name '{name}' doesn't exist.")
+            return default
         return IDAImport(self, *ret)
 
     @property
@@ -366,6 +422,14 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             address = ida_entry.get_entry(ordinal)
             name = ida_entry.get_entry_name(ordinal)
             yield IDAExport(self, address, name)
+
+    def undefine(self, start: int, end: int = None) -> bool:
+        if end:
+            if end <= start:
+                raise ValueError(f"End address {hex(end)} is smaller than starting address {hex(start)}")
+            return self._ida_bytes.del_items(start, self._ida_bytes.DELIT_SIMPLE, end - start)
+        else:
+            return self._ida_bytes.del_items(start, self._ida_bytes.DELIT_SIMPLE)
 
 
 class IDALocal(IDAFlatAPI, IDALocalDisassembler):

@@ -398,7 +398,6 @@ class IDARemoteDisassembler(IDADisassembler):
         # We need to temporarily change the current directory to be within the ida path so we don't
         # have spaces in script file path.
         # For an unknown reason, IDA hates spaces in its script path.
-        # TODO: Fix this so we don't need this.
         orig_cwd = os.getcwd()
         try:
             os.chdir(self._ida_path)
@@ -511,8 +510,7 @@ class IDARemoteDisassembler(IDADisassembler):
             for arg in args:
                 if arg is self:
                     self._bridge.execute("import dragodis")
-                    terran_dis = self._bridge.eval("dragodis.IDA()")
-                    arg = terran_dis
+                    arg = self._bridge.eval("dragodis.IDA()")
                 new_args.append(arg)
             args = tuple(new_args)
 

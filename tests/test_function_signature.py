@@ -35,8 +35,8 @@ def test_signature_declaration_ida(disassembler, address, declaration):
 
 
 @pytest.mark.parametrize("address,declaration", [
-    (0x401000, "undefined cdecl FUN_00401000(byte * param_1, byte param_2)"),
-    (0x40a0c4, "LPVOID stdcall HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes)")
+    (0x401000, "undefined __cdecl FUN_00401000(byte * param_1, byte param_2)"),
+    (0x40a0c4, "LPVOID __stdcall HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes)")
 ])
 def test_signature_declaration_ghidra(disassembler, address, declaration):
     signature = disassembler.get_function_signature(address)

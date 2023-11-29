@@ -242,6 +242,22 @@ def test_get_function_by_name(disassembler):
     assert "printf" in func.name
 
 
+@pytest.mark.parametrize("backend", ["ida", "ghidra"])
+def test_create_function(shared_datadir, backend):
+    input_path = shared_datadir / "strings_x86 .text[00401000,0040102a].bin"
+    try:
+        with dragodis.open_program(str(input_path), backend, processor=dragodis.PROCESSOR_X86) as dis:
+            if func := dis.get_function(0x0, None):
+                func.undefine(True)
+            assert not dis.get_function(0x0, None)
+            func = dis.create_function(0x0)
+            assert func
+            assert func.start == 0
+            assert func.end == 0x2B
+    except dragodis.NotInstalledError as e:
+        pytest.skip(str(e))
+
+
 def test_functions(disassembler):
     # Test getting all functions
     funcs = list(disassembler.functions())

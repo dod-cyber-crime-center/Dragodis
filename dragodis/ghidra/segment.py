@@ -61,10 +61,12 @@ class GhidraSegment(Segment):
             permissions |= SegmentPermission.volatile
         return permissions
 
-    @property
-    def lines(self) -> Iterable[GhidraLine]:
+    def lines(self, start: int = None, reverse: bool = False) -> Iterable[GhidraLine]:
         if self.initialized:
-            yield from self._ghidra.lines(self.start, self.end)
+            if reverse:
+                yield from self._ghidra.lines(start or self.end, self.start - 1, reverse=True)
+            else:
+                yield from self._ghidra.lines(start or self.start, self.end)
 
     def open(self) -> GhidraMemory:
         if not self.initialized:

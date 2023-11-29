@@ -1,26 +1,31 @@
 
+from __future__ import annotations
+
 import abc
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, TYPE_CHECKING
 
 import capstone
 
-# TODO: Rename to base?
 from dragodis.exceptions import NotExistError
-from dragodis.interface.string import String
-from dragodis.interface.variable import GlobalVariable
-from dragodis.interface.data_type import DataType
-from dragodis.interface.function_signature import FunctionSignature
-from dragodis.interface.operand import Operand
-from dragodis.interface.operand_value import Register, OperandValue
-from dragodis.interface.function import Function
-from dragodis.interface.flowchart import Flowchart, BasicBlock
-from dragodis.interface.instruction import Instruction
-from dragodis.interface.memory import Memory
-from dragodis.interface.segment import Segment
-from dragodis.interface.line import Line
-from dragodis.interface.reference import Reference
-from dragodis.interface.symbol import Import, Export
 from dragodis.interface.types import OperandType, CommentType, ReferenceType
+
+if TYPE_CHECKING:
+    from dragodis.interface.data_type import DataType
+    from dragodis.interface.flowchart import Flowchart, BasicBlock
+    from dragodis.interface.function import Function
+    from dragodis.interface.function_signature import FunctionSignature
+    from dragodis.interface.instruction import Instruction
+    from dragodis.interface.line import Line
+    from dragodis.interface.memory import Memory
+    from dragodis.interface.operand import Operand
+    from dragodis.interface.operand_value import Register, OperandValue
+    from dragodis.interface.reference import Reference
+    from dragodis.interface.segment import Segment
+    from dragodis.interface.string import String
+    from dragodis.interface.symbol import Import, Export
+    from dragodis.interface.variable import GlobalVariable
+
+MISSING = object()
 
 
 # TODO: Look into using zope.interface instead of abc
@@ -141,33 +146,37 @@ class FlatAPI(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def get_virtual_address(self, file_offset: int) -> int:
+    def get_virtual_address(self, file_offset: int, default=MISSING) -> int:
         """
         Obtains virtual address from given file offset.
 
         :param int file_offset: Offset within underlying source file.
+        :param default: Default value to provide if provided offset doesn't exist. (Raises NotExistError if not provided)
         :raises NotExistsError: If a virtual address doesn't exists for given file offset.
         """
 
     @abc.abstractmethod
-    def get_file_offset(self, addr: int) -> int:
+    def get_file_offset(self, addr: int, default=MISSING) -> int:
         """
         Obtains offset within underlying source file from given virtual address.
 
         :param int addr: Linear address.
+        :param default: Default value to provide if provided address doesn't exist. (Raises NotExistError if not provided)
         :raises NotExistsError: If a file offset doesn't exists for given address.
         """
 
     # TODO: Move these to some type of Memory object?
 
     @abc.abstractmethod
-    def get_byte(self, addr: int) -> int:
+    def get_byte(self, addr: int, default=MISSING) -> int:
         """
         Returns the one byte value at ``addr``.
 
         Must throw a NotExistError exception if the byte cannot be retrieved.
 
         :param int addr: Address where the byte is located
+        :param default: Default value to provide if provided address doesn't exist. (Raises NotExistError if not provided)
+
         :return: One byte value
         :rtype: int
         """
@@ -198,6 +207,7 @@ class FlatAPI(metaclass=abc.ABCMeta):
 
         :param pattern: Bytes we are looking for
         :param start: Address to start the search (defaults to min or max address)
+        :param end: Address to end the search (noninclusive) (defaults to min or max address)
         :param reverse: Whether to search upwards instead of downwards.
         :return: The start address for the first found instance of given bytes or -1 if not found.
         """
@@ -252,25 +262,27 @@ class FlatAPI(metaclass=abc.ABCMeta):
         return self.get_line(addr).get_comment(comment_type=comment_type)
 
     @abc.abstractmethod
-    def get_function(self, addr: int) -> Function:
+    def get_function(self, addr: int, default=MISSING) -> Function:
         """
         Returns a `Function` instance containing ``addr``.
 
         The :class:`~.Function` instance may be cached or a new instance created.
 
         :param int addr: Any address within the Function
+        :param default: Default value to provide if function doesn't exist. (Raises NotExistError if not provided)
 
         :return: A :class:`~.Function` instance containing the given address
         :raises NotExistError: If there is no function containing the given address.
         """
 
-    def get_function_by_name(self, name: str, ignore_underscore: bool = True) -> Function:
+    def get_function_by_name(self, name: str, ignore_underscore: bool = True, default=MISSING) -> Function:
         """
         Returns a `Function` instance with given name.
 
         :param str name: Name of function to obtain
         :param bool ignore_underscore: Whether to ignore leading or trailing underscores in function name.
             (Will return the first found function if enabled.)
+        :param default: Default value to provide if function doesn't exist. (Raises NotExistError if not provided)
 
         :return: A :class:`~.Function` instance containing the given address
         :raises NotExistError: If there is no function containing the given address.
@@ -283,36 +295,82 @@ class FlatAPI(metaclass=abc.ABCMeta):
                 return func
         raise NotExistError(f"Unable to find function with name: {name}")
 
+    @abc.abstractmethod
+    def create_function(self, start: int, end: int = None, *, default=MISSING) -> Function:
+        """
+        Creates a new function within the underlying disassembler and returns a `Function` instance
+        of the new function.
+
+        :param start: Starting or entry point of the function.
+        :param end: Ending address of the function if known. Function bounds will be determined by
+            the underlying disassembler if not provided.
+        :param default: Value to return if function could not be created. (Raises ValueError if not provided)
+
+        :return: A :class:`~.Function` instance of the created function.
+        :raises ValueError: If a function cannot be successfully created at given address range.
+        """
+
+    def get_or_create_function(self, start: int, default=None) -> Optional[Function]:
+        """
+        Gets or creates function at given starting address.
+
+        :param start: Starting or entry point of the function
+        :param default: Value to return if function could not be created.
+
+        :return: A :class:`~Function` instance of the function or default if no function could be found or created.
+        """
+        try:
+            return self.get_function(start)
+        except NotExistError:
+            try:
+                return self.create_function(start)
+            except ValueError:
+                return default
+
     # TODO: Implement ability to provide operand for the assist?
     @abc.abstractmethod
-    def get_function_signature(self, addr: int) -> FunctionSignature:
+    def get_function_signature(self, addr: int, default=MISSING) -> FunctionSignature:
         """
         Returns a `FunctionSignature` instance for the function defined at ``addr``.
         Address can be the start of a function or address or an imported function.
 
         :param int addr: Any address
+        :param default: Default value to provide if function doesn't exist. (Raises NotExistError if not provided)
         :raises NotExistError: If there is no function signature at the given address.
         """
 
-    def get_flowchart(self, addr: int) -> Flowchart:
+    def get_flowchart(self, addr: int, default=MISSING) -> Flowchart:
         """
         Returns a `Flowchart` instance containing ``addr``.
 
         :param int addr: Any address within the Flowchart
+        :param default: Default value to provide if provided address doesn't exist. (Raises NotExistError if not provided)
+
         :raises NotExistError: If there is no flowchart containing the given address.
         """
-        return self.get_function(addr).flowchart
+        try:
+            return self.get_function(addr).flowchart
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_basic_block(self, addr: int) -> BasicBlock:
+    def get_basic_block(self, addr: int, default=MISSING) -> BasicBlock:
         """
         Returns a `BasicBlock` instance containing ``addr``.
 
         :param int addr: Any address within the BasicBlock
+        :param default: Default value to provide if function doesn't exist. (Raises NotExistError if not provided)
         :raises NotExistError: If there is no basic block containing the given address.
         """
-        return self.get_flowchart(addr).get_block(addr)
+        try:
+            return self.get_flowchart(addr).get_block(addr)
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_instruction(self, addr: int) -> Instruction:
+    def get_instruction(self, addr: int, default=MISSING) -> Instruction:
         """
         Returns an Instruction object for the given any address contained within the
         instruction.
@@ -325,11 +383,13 @@ class FlatAPI(metaclass=abc.ABCMeta):
         instruction = line.instruction
         if instruction:
             return instruction
-        else:
+        elif default is MISSING:
             raise NotExistError(f"Instruction not found at {hex(addr)}")
+        else:
+            return default
 
     @abc.abstractmethod
-    def get_line(self, addr: int) -> Line:
+    def get_line(self, addr: int, default=MISSING) -> Line:
         """
         Returns a Line object representing a defined item containing an instruction
         or data containing the given ``addr``
@@ -338,9 +398,10 @@ class FlatAPI(metaclass=abc.ABCMeta):
         it must throw a NotExistError exception.
 
         :param int addr: An address contained within the Line.
+        :param default: Default value to provide if line doesn't exist. (Raises NotExistError if not provided)
         """
 
-    def get_line_address(self, addr: int) -> int:
+    def get_line_address(self, addr: int, default=MISSING) -> int:
         """
         Returns the address head of the 'line' containing ``addr``.  That is, the
         address of the start of the data item or instruction.
@@ -349,12 +410,17 @@ class FlatAPI(metaclass=abc.ABCMeta):
         method is called with ``get_line(0x004010f1)`` it must return ``0x004010ef``.
 
         :param int addr: Base address
-        :return: Address head of the line which contains ``addr``
-        :rtype: int
+        :param default: Default value to provide if line doesn't exist. (Raises NotExistError if not provided)
+        :return int: Address head of the line which contains ``addr``
         """
-        return self.get_line(addr).address
+        try:
+            return self.get_line(addr).address
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_mnemonic(self, addr: int) -> str:
+    def get_mnemonic(self, addr: int, default=MISSING) -> str:
         """
         Returns the disassembler text of the indicated instruction's mnemonic.
 
@@ -363,6 +429,8 @@ class FlatAPI(metaclass=abc.ABCMeta):
         to follow the official mnemonics as much as possible.
 
         :param int addr: Address of the instruction
+        :param default: Default value to provide if instruction doesn't exist. (Raises NotExistError if not provided)
+
         :return: String representation of the mnemonic
         :raises NotExistError: If instruction isn't present at given address.
         """
@@ -388,7 +456,7 @@ class FlatAPI(metaclass=abc.ABCMeta):
         else:
             return self.get_line(addr).name
 
-    def get_operand(self, addr: int, index: int) -> Operand:
+    def get_operand(self, addr: int, index: int, default=MISSING) -> Operand:
         """
         Returns an Operand object based on the operand at a given address.
         """
@@ -397,11 +465,13 @@ class FlatAPI(metaclass=abc.ABCMeta):
         try:
             return operands[index]
         except IndexError:
-            raise NotExistError(
-                f"Instruction at {hex(instruction.address)} does not have an operand at index {index}"
-            )
+            if default is MISSING:
+                raise NotExistError(
+                    f"Instruction at {hex(instruction.address)} does not have an operand at index {index}"
+                )
+            return default
 
-    def get_operand_type(self, addr: int, idx: int) -> OperandType:
+    def get_operand_type(self, addr: int, idx: int, default=MISSING) -> OperandType:
         """
         Returns the type of the selected operand.
 
@@ -412,46 +482,66 @@ class FlatAPI(metaclass=abc.ABCMeta):
 
         :param int addr: Address of the instruction
         :param int idx: Index of the operand
+        :param default: Default value to provide if instruction doesn't exist. (Raises NotExistError if not provided)
+
         :return: Operand type
         """
-        operand = self.get_operand(addr, idx)
-        return operand.type
+        try:
+            return self.get_operand(addr, idx).type
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
-    def get_operand_value(self, addr: int, idx: int) -> Optional[OperandValue]:
+    def get_operand_value(self, addr: int, idx: int, default=MISSING) -> Optional[OperandValue]:
         """
         The number used in the operand.
         This function returns an immediate number used in the operand
         based on the type of operand.
 
+        :param int addr: Address of the instruction
+        :param int idx: Index of the operand
+        :param default: Default value to provide if instruction doesn't exist. (Raises NotExistError if not provided)
+
         :return: OperandValue object
         """
-        operand = self.get_operand(addr, idx)
-        return operand.value
+        try:
+            return self.get_operand(addr, idx).value
+        except NotExistError:
+            if default is MISSING:
+                raise
+            return default
 
     @abc.abstractmethod
-    def get_data_type(self, name: str) -> DataType:
+    def get_data_type(self, name: str, default=MISSING) -> DataType:
         """
         Obtain the data type from the given name.
+
+        :param default: Default value to provide if data doesn't exist. (Raises NotExistError if not provided)
         """
 
     @abc.abstractmethod
-    def get_register(self, name: str) -> Register:
+    def get_register(self, name: str, default=MISSING) -> Register:
         """
         Obtains a register from given name.
 
         :param str name: Name of register.
+        :param default: Default value to provide if register doesn't exist. (Raises NotExistError if not provided)
+
         :return: Register object for given register.
         :raises NotExistError: If register of given name is not a valid processor register.
         """
 
     @abc.abstractmethod
-    def get_segment(self, addr_or_name: Union[int, str]) -> Segment:
+    def get_segment(self, addr_or_name: Union[int, str], default=MISSING) -> Segment:
         """
         Returns an open memory segment object that contains the given address or has the given name.
         (If providing a name and there are multiple segments with the given name,
         it returns the first one.)
 
         :param addr_or_name: Either an address contained in the segment or name of the segment.
+        :param default: Default value to provide if segment doesn't exist. (Raises NotExistError if not provided)
+
         :return: Segment object.
         :rtype: Segment
         :raises NotExistError: If a segment doesn't exist for the given input.
@@ -477,7 +567,7 @@ class FlatAPI(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None) -> bytes:
+    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None, default=MISSING) -> bytes:
         """
         Returns the raw bytes for a string at the represented address.
         (This effectively gets bytes until it encounters the null terminator)
@@ -491,6 +581,8 @@ class FlatAPI(metaclass=abc.ABCMeta):
         :param int bit_width: Number of bits which represent a code point.
             (May be omitted to allow disassembler to determine appropriate value.)
             (Must be 8, 16, or 32 if provided.)
+        :param default: Default value to provide if string data doesn't exist. (Raises NotExistError if not provided)
+
         :return: Raw bytes containing encoded string.
         """
 
@@ -540,29 +632,20 @@ class FlatAPI(metaclass=abc.ABCMeta):
         if end is None:
             end = self.max_address if not reverse else self.min_address
 
-        # TODO: Automatically detect reverse if start > end?
         if reverse:
             if end > start:
                 raise ValueError(f"Start address {hex(start)} must be greater than end address {hex(end)}")
-            line = self.get_line(start)
-            while True:
-                if line.address <= end:
-                    break
+            line = self.get_line(start, None)
+            while line and line.address > end:
                 yield line
                 line = line.prev
-                if not line:
-                    break
         else:
             if end < start:
                 raise ValueError(f"Start address {hex(start)} must be less than end address {hex(end)}")
-            line = self.get_line(start)
-            while True:
-                if line.address >= end:
-                    break
+            line = self.get_line(start, None)
+            while line and line.address < end:
                 yield line
                 line = line.next
-                if not line:
-                    break
 
     def instructions(self, start: int = None, end: int = None, reverse=False) -> Iterable[Instruction]:
         """
@@ -665,11 +748,13 @@ class FlatAPI(metaclass=abc.ABCMeta):
         :raises ValueError: If cross reference failed to create.
         """
 
-    def get_variable(self, addr: int) -> GlobalVariable:
+    def get_variable(self, addr: int, default=MISSING) -> GlobalVariable:
         """
         Obtains the global variable containing the given address.
 
         :param int addr: An address contained in the variable.
+        :param default: Default value to provide if variable doesn't exist. (Raises NotExistError if not provided)
+
         :raises NotExistError: If a variable doesn't exist for the given address.
         """
 
@@ -721,17 +806,21 @@ class FlatAPI(metaclass=abc.ABCMeta):
         The imports within the binary.
         """
 
-    def get_import(self, name: str) -> Import:
+    def get_import(self, name: str, default=MISSING) -> Import:
         """
         Gets import symbol by name.
         :param name: Name of import function
+        :param default: Default value to provide if import doesn't exist. (Raises NotExistError if not provided)
+
         :return: Import symbol
         :raises NotExistError: If import by the given name doesn't exist.
         """
         for import_ in self.imports:
             if import_.name == name:
                 return import_
-        raise NotExistError(f"Import with name '{name}' doesn't exist.")
+        if default is MISSING:
+            raise NotExistError(f"Import with name '{name}' doesn't exist.")
+        return default
 
     @property
     @abc.abstractmethod
@@ -740,14 +829,31 @@ class FlatAPI(metaclass=abc.ABCMeta):
         The exports within the binary.
         """
 
-    def get_export(self, name: str) -> Export:
+    def get_export(self, name: str, default=MISSING) -> Export:
         """
         Gets export symbol by name.
         :param name: Name of import function
+        :param default: Default value to provide if export doesn't exist. (Raises NotExistError if not provided)
+
         :return: Export symbol
         :raises NotExistError: If export by the given name doesn't exist.
         """
         for export in self.exports:
             if export.name == name:
                 return export
-        raise NotExistError(f"Export with name '{name}' doesn't exist.")
+        if default is MISSING:
+            raise NotExistError(f"Export with name '{name}' doesn't exist.")
+        return default
+
+    @abc.abstractmethod
+    def undefine(self, start: int, end: int = None) -> bool:
+        """
+        Undefines or clears the code bytes within the given address range.
+
+        :param start: Starting address to clear defined code bytes.
+        :param end: Ending address (non-inclusive)
+            (Only the start address is cleared if end address is not provided.)
+        :raises ValueError: Invalid end address.
+        :return bool: If undefining data at given range was successful.
+        """
+

@@ -72,10 +72,12 @@ class IDASegment(Segment):
             ret |= SegmentPermission.read
         return ret
 
-    @property
-    def lines(self) -> Iterable[IDALine]:
+    def lines(self, start: int = None, reverse: bool = False) -> Iterable[IDALine]:
         if self.initialized:
-            yield from self._ida.lines(self.start, self._real_end)
+            if reverse:
+                yield from self._ida.lines(start or self._real_end, self.start - 1, reverse=True)
+            else:
+                yield from self._ida.lines(start or self.start, self._real_end)
 
     def open(self) -> IDAMemory:
         if not self.initialized:

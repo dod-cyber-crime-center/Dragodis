@@ -280,7 +280,13 @@ def _test_variable(disassembler, address, index, name, size, data_type, location
     assert variable
     assert variable.name == name
     assert variable.size == size
-    assert variable.data_type.name == data_type
+
+    data_type_name = variable.data_type.name
+    # Ghidra 10.4 switch 'undefined' to 'undefined1'
+    if data_type_name == "undefined1":
+        data_type_name = "undefined"
+    assert data_type_name == data_type
+
     if isinstance(variable, GlobalVariable):
         assert variable.address == location
     elif isinstance(variable, StackVariable):
@@ -307,7 +313,11 @@ def test_variable_ida(disassembler, address, index, name, size, data_type, locat
 @pytest.mark.parametrize("address,index,name,size,data_type,location", [
     (0x40100d, 1, "param_2", 1, "byte", 8),
     (0x401024, 0, "param_1", 4, "byte *", 4),
-    (0x4058b4, 0, "local_28", 4, "undefined4", -0x28),
+    (0x40585b, 0, "local_8", 4, "undefined4", -0x8),
+    pytest.param(
+        0x4058b4, 0, "local_28", 4, "undefined4", -0x28,
+        marks=pytest.mark.xfail(reason="Ghidra 10.3.2 sometimes doesn't make this variable.")
+    ),
     (0x4058b4, 1, "s_GetLastActivePopup_0040a9a0", 19, "string", 0x40a9a0),
     (0x4015a6, 0, "DAT_0040d1c8", 1, "undefined", 0x40d1c8),
     (0x404096, 0, "PTR_LeaveCriticalSection_0040a008", 4, "pointer", 0x40A008),

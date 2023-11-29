@@ -23,17 +23,9 @@ def test_teleport_ida(disassembler):
     assert teleported(disassembler)
 
 
-def _get_input_path(tmp_path_factory, filename):
-    tmp_dir = tmp_path_factory.mktemp(filename)
-    input_path = pathlib.Path(__file__).parent.parent / "data" / filename
-    new_input_path = tmp_dir / filename
-    shutil.copy(input_path, new_input_path)
-    return new_input_path
-
-
 @pytest.mark.parametrize("backend", ["ida", "ghidra"])
-def test_shellcode_x86(tmp_path_factory, backend):
-    input_path = _get_input_path(tmp_path_factory, "strings_x86 .text[00401000,0040102a].bin")
+def test_shellcode_x86(shared_datadir, backend):
+    input_path = shared_datadir / "strings_x86 .text[00401000,0040102a].bin"
 
     try:
         with dragodis.open_program(str(input_path), backend, processor=dragodis.PROCESSOR_X86) as dis:
@@ -45,8 +37,8 @@ def test_shellcode_x86(tmp_path_factory, backend):
 
 
 @pytest.mark.parametrize("backend", ["ida", "ghidra"])
-def test_shellcode_arm(tmp_path_factory, backend):
-    input_path = _get_input_path(tmp_path_factory, "strings_arm .text[000103fc,0001045b].bin")
+def test_shellcode_arm(shared_datadir, backend):
+    input_path = shared_datadir / "strings_arm .text[000103fc,0001045b].bin"
 
     try:
         with dragodis.open_program(str(input_path), backend, processor=dragodis.PROCESSOR_ARM) as dis:

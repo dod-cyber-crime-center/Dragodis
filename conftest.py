@@ -1,22 +1,11 @@
-import pathlib
-import shutil
 
 import pytest
 
 import dragodis
 
 
-def _get_strings_path(arch, tmp_path_factory) -> pathlib.Path:
-    filename = f"strings_{arch}"
-    tmp_dir = tmp_path_factory.mktemp(filename)
-    strings_path = pathlib.Path(__file__).parent / "data" / filename
-    new_strings_path = tmp_dir / filename
-    shutil.copy(strings_path, new_strings_path)
-    return new_strings_path
-
-
 @pytest.fixture(scope="function")
-def disassembler(request, tmp_path_factory) -> dragodis.Disassembler:
+def disassembler(request, shared_datadir) -> dragodis.Disassembler:
     """
     This fixture gets indirectly called by pytest_generate_tests.
     """
@@ -27,7 +16,7 @@ def disassembler(request, tmp_path_factory) -> dragodis.Disassembler:
         arch = "x86"
     else:
         backend, arch = request.param
-    strings_path = _get_strings_path(arch, tmp_path_factory)
+    strings_path = shared_datadir / f"strings_{arch}"
     try:
         with dragodis.open_program(str(strings_path), disassembler=backend) as dis:
             yield dis

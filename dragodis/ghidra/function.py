@@ -85,4 +85,18 @@ class GhidraFunction(Function):
 
     @property
     def is_library(self) -> bool:
+        # Bit of a hack here, Ghidra doesn't present this information easily.
+        if comment := self.get_comment():
+            if comment.startswith("Library Function"):
+                return True
         return self._function in self._ghidra._static_functions
+
+    def undefine(self, clear_instructions: bool = False):
+        # Clear instructions.
+        if clear_instructions:
+            self._ghidra._flatapi.clearListing(self._body)
+
+        # Delete defined function.
+        from ghidra.app.cmd.function import DeleteFunctionCmd
+        cmd = DeleteFunctionCmd(self._function.getEntryPoint(), True)
+        cmd.applyTo(self._ghidra._program)

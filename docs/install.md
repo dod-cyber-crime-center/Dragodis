@@ -13,7 +13,7 @@ Then follow one or more of the following instructions to setup your favorite dis
 
 ## IDA
 
-1. Download and install [IDA Pro 7.\*](https://www.hex-rays.com) with Python 3 mode. (Tested on version 7.4, 7.5, and 7.7) Make sure to run IDA at least once to accept the EULA.
+1. Download and install [IDA Pro](https://www.hex-rays.com) with Python 3 mode. (Tested on version 7.4, 7.5, 7.7, and 8.1) Make sure to run IDA at least once to accept the EULA.
 2. Set the `IDA_INSTALL_DIR` environment variable to point to the directory where IDA is installed. (e.g. `C:\Program Files\IDA Pro 7.5`)
 3. Dragodis uses [rpyc](https://rpyc.readthedocs.io/en/latest) to communicate with IDA.
    This is installed automatically when you install Dragodis. However, if you are using a different python
@@ -28,6 +28,7 @@ Then follow one or more of the following instructions to setup your favorite dis
    ```bash
    py -3.8 -m pip install pywin32 --target="%IDA_INSTALL_DIR%\python\3"
    ```
+
 
 ## Ghidra
 

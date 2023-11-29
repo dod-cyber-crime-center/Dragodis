@@ -88,9 +88,8 @@ class Segment(metaclass=abc.ABCMeta):
         The permissions applied to the segment.
         """
 
-    @property
     @abc.abstractmethod
-    def lines(self) -> Iterable[Line]:
+    def lines(self, start: int = None, reverse: bool = False) -> Iterable[Line]:
         """
         Iterates the lines found within the segment.
         """

@@ -5,6 +5,7 @@ import functools
 from typing import Iterable, TYPE_CHECKING, Optional, Set
 
 from dragodis.exceptions import NotExistError
+from dragodis.interface.flat import MISSING
 
 if TYPE_CHECKING:
     from dragodis.interface import FlowType, Line, FlatAPI
@@ -280,17 +281,21 @@ class Flowchart(metaclass=abc.ABCMeta):
                 yield from block.lines(reverse=reverse)
             _first_block = False
 
-    def get_block(self, addr: int) -> BasicBlock:
+    def get_block(self, addr: int, default=MISSING) -> BasicBlock:
         """
         Gets BasicBlock containing given address.
         Defaults to iterating each block and checking if address is contained within.
+
+        :param default: Default value to provide if block doesn't exist. (Raises NotExistError if not provided)
 
         :raises NotExistError: If block doesn't exist with in the flowchart for the given address.
         """
         for block in self.blocks:
             if addr in block:
                 return block
-        raise NotExistError(f"Unable to find block containing address 0x{addr:08x} within flowchart.")
+        if default is MISSING:
+            raise NotExistError(f"Unable to find block containing address 0x{addr:08x} within flowchart.")
+        return default
 
     @property
     def start(self) -> Optional[int]:

@@ -66,9 +66,11 @@ class IDAFunction(Function):
     def name(self, new_name: Optional[str]):
         success = self._ida._ida_name.set_name(
             self.start, new_name or "", self._ida._ida_name.SN_NOCHECK)
+        if not success and new_name:
+            success = self._ida._ida_name.force_name(self.start, new_name)
         if not success:
             raise ValueError(f"Failed to set function name at {hex(self.start)} with {new_name}")
-        self._name = None  # clear cache
+        self._name = None  # invalidate cache
 
     def set_comment(self, comment: str, comment_type=CommentType.anterior):
         # IDA takes an empty string to clear comments
@@ -96,3 +98,9 @@ class IDAFunction(Function):
     @property
     def is_library(self) -> bool:
         return bool(self._func_t.flags & self._ida._ida_funcs.FUNC_LIB)
+
+    def undefine(self, clear_instructions: bool = False):
+        start, end = self.start, self.end
+        self._ida._ida_funcs.del_func(start)
+        if clear_instructions:
+            self._api.undefine(start, end)

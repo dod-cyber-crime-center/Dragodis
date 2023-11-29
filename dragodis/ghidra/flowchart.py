@@ -7,6 +7,7 @@ from dragodis.exceptions import NotExistError
 from dragodis.ghidra.line import GhidraLine
 from dragodis.ghidra.utils import iterate, convert_flow_type
 from dragodis.interface import Flowchart, BasicBlock, FlowType
+from dragodis.interface.flat import MISSING
 
 if TYPE_CHECKING:
     import ghidra
@@ -85,17 +86,13 @@ class GhidraFlowchart(Flowchart):
         for block in iterate(iterator):
             yield GhidraBasicBlock(self._ghidra, block)
 
-    def get_block(self, addr: int) -> GhidraBasicBlock:
-        """
-        Gets BasicBlock containing given address.
-        Defaults to iterating each block and checking if address is contained within.
-
-        :raises NotExistError: If block doesn't exist with in the flowchart for the given address.
-        """
+    def get_block(self, addr: int, default=MISSING) -> GhidraBasicBlock:
         block = self._ghidra._basic_block_model.getFirstCodeBlockContaining(
             self._ghidra._to_addr(addr), self._ghidra._monitor
         )
         if block:
             return GhidraBasicBlock(self._ghidra, block)
-        else:
+        elif default is MISSING:
             raise NotExistError(f"Unable to find block containing address 0x{addr:08x} within flowchart.")
+        else:
+            return default

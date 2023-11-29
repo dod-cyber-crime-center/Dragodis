@@ -231,6 +231,15 @@ class GhidraLine(Line):
             elif new_type == LineType.float:
                 from ghidra.program.model.data import FloatDataType
                 data_type = FloatDataType(manager)
+            elif new_type == LineType.string:
+                from ghidra.program.model.data import StringUTF8DataType
+                data_type = StringUTF8DataType(manager)
+            elif new_type == LineType.string16:
+                from ghidra.program.model.data import UnicodeDataType
+                data_type = UnicodeDataType(manager)
+            elif new_type == LineType.string32:
+                from ghidra.program.model.data import Unicode32DataType
+                data_type = Unicode32DataType(manager)
 
             if not data_type:
                 raise TypeError(f"Invalid line type: {repr(new_type)}")
@@ -265,6 +274,11 @@ class GhidraLine(Line):
         # Pointer object
         if hasattr(value, "getOffset"):
             value = value.getOffset()
+
+        # Handle custom Ghidra type.
+        from ghidra.pcode.floatformat import BigFloat
+        if isinstance(value, BigFloat):
+            value = float(value.toBigDecimal().floatValue())
 
         return value
 

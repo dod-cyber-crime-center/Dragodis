@@ -265,3 +265,13 @@ class Function(metaclass=abc.ABCMeta):
         Whether the function is a known library function.
         """
 
+    @abc.abstractmethod
+    def undefine(self, clear_instructions: bool = False):
+        """
+        Undefines or clears the function.
+
+        WARNING: This Function object should no longer be used once this function is ran.
+
+        :param clear_instructions: Whether to also clear the disassembled code bytes that make up the function.
+            Otherwise, only the function declaration is removed.
+        """

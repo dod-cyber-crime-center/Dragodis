@@ -5,7 +5,7 @@ from functools import cached_property
 
 from typing import Iterable, Union, List, TYPE_CHECKING, Optional
 
-from dragodis.interface.flat import FlatAPI
+from dragodis.interface.flat import FlatAPI, MISSING
 from dragodis.interface.reference import ReferenceType
 from dragodis.exceptions import NotExistError, UnsupportedError
 from .data_type import GhidraDataType
@@ -63,19 +63,23 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             if export.name in ("entry", "_start"):
                 return export.address
 
-    def get_virtual_address(self, file_offset: int) -> int:
+    def get_virtual_address(self, file_offset: int, default=MISSING) -> int:
         memory = self._program.getMemory()
         addresses = memory.locateAddressesForFileOffset(file_offset)
         if not addresses:
-            raise NotExistError(f"Cannot get virtual address for file offset: {hex(file_offset)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get virtual address for file offset: {hex(file_offset)}")
+            return default
         for address in addresses:
             return address.getOffset()
 
-    def get_file_offset(self, addr: int) -> int:
+    def get_file_offset(self, addr: int, default=MISSING) -> int:
         memory = self._program.getMemory()
         info = memory.getAddressSourceInfo(self._to_addr(addr))
         if not info or info.getFileOffset() == -1:
-            raise NotExistError(f"Cannot get file offset for address: {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get file offset for address: {hex(addr)}")
+            return default
         return info.getFileOffset()
 
     def functions(self, start=None, end=None) -> Iterable[GhidraFunction]:
@@ -96,13 +100,15 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         for function in iterator:
             yield GhidraFunction(self, function)
 
-    def get_byte(self, addr: int) -> int:
+    def get_byte(self, addr: int, default=MISSING) -> int:
         from ghidra.program.model.mem import MemoryAccessException
         try:
             # Mask necessary because jpype bytes are signed.
             return self._flatapi.getByte(self._to_addr(addr)) & 0xff
         except MemoryAccessException:
-            raise NotExistError(f"Cannot get byte at {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Cannot get byte at {hex(addr)}")
+            return default
 
     def get_bytes(self, addr: int, length: int, default: int = None) -> bytes:
         if length > 0x7fffffff:
@@ -123,7 +129,7 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
                     data.append(default)
             return bytes(data)
 
-    def find_bytes(self, pattern: bytes, start: int = None, reverse=False) -> int:
+    def find_bytes(self, pattern: bytes, start: int = None, end: int = None, reverse=False) -> int:
         if start is not None:
             start = self._to_addr(start)
         elif reverse:
@@ -131,13 +137,17 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         else:
             start = self._program.getMinAddress()
         memory = self._program.getMemory()
-        found = memory.findBytes(start, pattern, None, not reverse, self._monitor)
+        if end is None:
+            found = memory.findBytes(start, pattern, None, not reverse, self._monitor)
+        else:
+            end = self._to_addr(end + 1) # Add one because Ghidra is inclusive.
+            found = memory.findBytes(start, end, pattern, None, not reverse, self._monitor)
         if found is None:
             return -1
         else:
             return found.getOffset()
 
-    def get_data_type(self, name: str) -> GhidraDataType:
+    def get_data_type(self, name: str, default=MISSING) -> GhidraDataType:
         from ghidra.util.data import DataTypeParser
         from ghidra.program.model.data import InvalidDataTypeException
         # Must use .valueOf() because jpype doesn't handle enums well.
@@ -145,29 +155,67 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         try:
             data_type = parser.parse(name)
         except InvalidDataTypeException as e:
-            raise NotExistError(e)
+            if default is MISSING:
+                raise NotExistError(e)
+            return default
         return GhidraDataType(data_type)
 
-    def get_function(self, addr: int) -> GhidraFunction:
+    def get_function(self, addr: int, default=MISSING) -> GhidraFunction:
         address = self._to_addr(addr)
         function = self._flatapi.getFunctionContaining(address)
         if not function:
             block = self._flatapi.getMemoryBlock(address)
             if block is None or not block.isExecute():
-                raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+                if default is MISSING:
+                    raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+                return default
             # we've specifically been asked for a function containing this address
             # Ghidra has failed to find it on its own so let's just create it ourselves
             from ghidra.app.cmd.function import CreateFunctionCmd
             from ghidra.util import UndefinedFunction
             func = UndefinedFunction.findFunction(self._program, address, self._monitor)
             if func is None:
-                raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+                if default is MISSING:
+                    raise NotExistError(f"Function containing {hex(addr)} does not exist.")
+                return default
             cmd = CreateFunctionCmd(func.entryPoint, False)
             cmd.applyTo(self._program, self._monitor)
             function = cmd.getFunction()
         return GhidraFunction(self, function)
 
-    def get_function_signature(self, addr: int) -> GhidraFunctionSignature:
+    def create_function(self, start: int, end: int = None, *, default=MISSING) -> GhidraFunction:
+        from ghidra.program.model.address import AddressSet
+        from ghidra.program.model.symbol import SourceType
+        from ghidra.program.disassemble import Disassembler
+        from ghidra.app.cmd.function import CreateFunctionCmd
+
+        start = self._to_addr(start)
+        disassembler = Disassembler.getDisassembler(self._program, self._monitor, None)
+
+        if self._program.getFunctionManager().getFunctionAt(start):
+            raise ValueError(f"Function already exists at {hex(start.getOffset())}")
+
+        # Disassemble data to instructions (if not already) and then define the function.
+        if end:
+            end = self._to_addr(end)
+            body = AddressSet(start, end)
+            disassembler.disassemble(start, body)
+            cmd = CreateFunctionCmd(None, start, body, SourceType.USER_DEFINED)
+        else:
+            memory = self._program.getMemory()
+            restricted_set = AddressSet(memory.getBlock(start).getAddressRange())
+            disassembler.disassemble(start, restricted_set)
+            cmd = CreateFunctionCmd(start, True)
+
+        cmd.applyTo(self._program)
+        func = cmd.getFunction()
+        if not func:
+            if default is MISSING:
+                raise ValueError(f"Failed to create function at {hex(start.getOffset())}")
+            return default
+        return GhidraFunction(self, func)
+
+    def get_function_signature(self, addr: int, default=MISSING) -> GhidraFunctionSignature:
         address = self._to_addr(addr)
         function = self._flatapi.getFunctionAt(address)
         # If we don't find a function, address might be pointing to an external function pointer. (ie. import)
@@ -177,31 +225,39 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
                     function = ref.getExternalLocation().getFunction()
                     break
         if not function:
-            raise NotExistError(f"Function signature at {hex(addr)} does not exist.")
+            if default is MISSING:
+                raise NotExistError(f"Function signature at {hex(addr)} does not exist.")
+            return default
         return GhidraFunctionSignature(self, function)
 
-    def get_line(self, addr: int) -> GhidraLine:
+    def get_line(self, addr: int, default=MISSING) -> GhidraLine:
         code_unit = self._listing.getCodeUnitContaining(self._to_addr(addr))
         if code_unit is None:
-            raise NotExistError(f"Line at {hex(addr)} does not exist.")
+            if default is MISSING:
+                raise NotExistError(f"Line at {hex(addr)} does not exist.")
+            return default
         return GhidraLine(self, code_unit)
 
-    def get_register(self, name: str) -> GhidraRegister:
+    def get_register(self, name: str, default=MISSING) -> GhidraRegister:
         reg = self._program.getRegister(name)
         if not reg:
-            raise NotExistError(f"Invalid register name: {name}")
+            if default is MISSING:
+                raise NotExistError(f"Invalid register name: {name}")
+            return default
         return GhidraRegister(reg)
 
     # TODO: Be a little more lax here?
-    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None) -> bytes:
+    def get_string_bytes(self, addr: int, length: int = None, bit_width: int = None, default=MISSING) -> bytes:
         addr_obj = self._to_addr(addr)
         # First check if a string or other data type is set here.
         string_obj = self._flatapi.getDataAt(addr_obj)
         if string_obj:
             if not string_obj.hasStringValue():
-                # TODO: Create a different custom exception here?
-                raise NotExistError(
-                    f"Data type conflict at {hex(addr)}. Expected 'string', got '{string_obj.getDataType()}'")
+                if default is MISSING:
+                    raise NotExistError(
+                        f"Data type conflict at {hex(addr)}. Expected 'string', got '{string_obj.getDataType()}'"
+                    )
+                return default
             return bytes(string_obj.getBytes()).rstrip(b"\x00")
 
         from ghidra.app.util.bin import MemoryByteProvider, BinaryReader
@@ -230,18 +286,22 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
                 yield GhidraString(self, data)
             data = self._flatapi.getDataAfter(data)
 
-    def get_segment(self, addr_or_name: Union[int, str]) -> GhidraSegment:
+    def get_segment(self, addr_or_name: Union[int, str], default=MISSING) -> GhidraSegment:
         memory = self._program.getMemory()
         if isinstance(addr_or_name, str):
             name = addr_or_name
             memory_block = memory.getBlock(name)
             if not memory_block:
-                raise NotExistError(f"Could not find segment with name: {name}")
+                if default is MISSING:
+                    raise NotExistError(f"Could not find segment with name: {name}")
+                return default
         elif isinstance(addr_or_name, int):
             addr = addr_or_name
             memory_block = memory.getBlock(self._to_addr(addr))
             if not memory_block:
-                raise NotExistError(f"Could not find segment containing address 0x{addr:08x}")
+                if default is MISSING:
+                    raise NotExistError(f"Could not find segment containing address 0x{addr:08x}")
+                return default
         else:
             raise ValueError(f"Invalid input: {addr_or_name!r}")
 
@@ -309,10 +369,12 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
         )
         return GhidraReference(self, reference)
 
-    def get_variable(self, addr: int) -> GhidraGlobalVariable:
+    def get_variable(self, addr: int, default=MISSING) -> GhidraGlobalVariable:
         data = self._flatapi.getDataContaining(self._to_addr(addr))
         if not data:
-            raise NotExistError(f"Variable doesn't exist at {hex(addr)}")
+            if default is MISSING:
+                raise NotExistError(f"Variable doesn't exist at {hex(addr)}")
+            return default
         return GhidraGlobalVariable(self, data)
 
     @property
@@ -351,6 +413,21 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             return [result.function for result in results]
         finally:
             service.close()
+
+    def undefine(self, start: int, end: int = None) -> bool:
+        from ghidra.util.exception import CancelledException
+        try:
+            if end:
+                if end <= start:
+                    raise ValueError(f"End address {hex(end)} is smaller than starting address {hex(start)}")
+                # Ghidra is inclusive so jump to previous address for end.
+                end = self._listing.getCodeUnitBefore(self._to_addr(end)).getAddress()
+                self._flatapi.clearListing(self._to_addr(start), end)
+            else:
+                self._flatapi.clearListing(self._to_addr(start))
+            return True
+        except CancelledException:
+            return False
 
 
 class GhidraLocal(GhidraFlatAPI, GhidraLocalDisassembler):
