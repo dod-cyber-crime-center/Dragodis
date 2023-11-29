@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.0] - 2023-11-29
 - Updated Ghidra support to 10.3.2 and 10.4
 - Added automatic activation of virtualenv within IDA process if one is detected.
 - Added `Disassembler.create_function()` for defining a new function.
@@ -135,7 +135,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.2...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.2...0.8.0
 [0.7.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.6.0...0.7.0
