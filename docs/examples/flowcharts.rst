@@ -26,8 +26,8 @@ flow type, the lines within, as well as other basic blocks that come into or out
     0x401003
     >>> print(hex(block.end))
     0x40100d
-    >>> print(block.flow_type)
-    FlowType.conditional_jump
+    >>> print(block.flow_type.name)
+    conditional_jump
     >>> print("\n".join(map(str, block.lines())))
     0x00401003: mov     eax, [ebp+arg_0]
     0x00401006: movsx   ecx, byte ptr [eax]

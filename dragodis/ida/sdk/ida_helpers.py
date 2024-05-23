@@ -54,7 +54,8 @@ def iter_imports(_target=None) -> Iterable[Tuple[int, Optional[int], str, str]]:
                             name = ida_funcs.get_func_name(thunk_addr)
                             break
                     else:
-                        raise RuntimeError(f"Failed to find a thunk for {name} at 0x{addr:08X}")
+                        # If thunk not found, this is most likely an imported variable/macro.
+                        name = raw_name[len("__imp_"):]
 
                 if _target and name != _target:
                     return True  # continue enumeration
@@ -195,6 +196,12 @@ def get_operands(address: int) -> List[Tuple[int, ida_ua.op_t]]:
     for index, op in enumerate(ops):
         if op.type == o_void:
             break  # no more operands
+        # The op_t objects within the insn_t object become a dangling pointer when the insn_t
+        # object goes out of scope.
+        # Creating our own copy to avoid this.
+        op_copy = ida_ua.op_t()
+        op_copy.assign(op)
+        op = op_copy
 
         ret.append((index, op))
 
@@ -387,7 +394,7 @@ def decompiled_code(address: int, _visited=None) -> Optional[ida_hexrays.cfuncpt
         failed_address = fail_obj.errea
         if ida_ua.ua_mnem(failed_address) == "call":
             call_address = idc.get_operand_value(failed_address, 0)
-            if decompiled_code(_visited=_visited) is not None:
+            if decompiled_code(call_address, _visited=_visited) is not None:
                 return decompiled_code(address, visited=_visited)
 
     # TODO: Observed this message pops up with fail_obj.code == 0... unsure if that is actually an error.

@@ -4,7 +4,6 @@ from __future__ import annotations
 import pathlib
 
 import atexit
-import gc
 import re
 import logging
 import os
@@ -185,7 +184,7 @@ class IDARemoteDisassembler(IDADisassembler):
         "sync_request_timeout": 60
     }
 
-    def __init__(self, input_path, is_64_bit=None, ida_path=None, timeout=None, processor=None, **unused):
+    def __init__(self, input_path, is_64_bit=None, ida_path=None, timeout=None, processor=None, detach=False, **unused):
         """
         Initializes IDA disassembler.
 
@@ -197,6 +196,9 @@ class IDARemoteDisassembler(IDADisassembler):
         :param timeout: Number of seconds to wait for remote results. (defaults to 60)
         :param processor: Processor type (defaults to auto detected)
             (https://hex-rays.com/products/ida/support/idadoc/618.shtml)
+        :param detach: Detach the IDA subprocess from the parent process group.
+            This will cause signals to no longer propagate.
+            (Linux only)
         """
         super().__init__(input_path, processor=processor)
         self._ida_path = ida_path or os.environ.get("IDA_INSTALL_DIR", os.environ.get("IDA_DIR"))
@@ -237,6 +239,7 @@ class IDARemoteDisassembler(IDADisassembler):
 
         self._running = False
 
+        self._detach = detach and sys.platform != "win32"
         self._socket_path = None
         self._process = None
         self._bridge = None
@@ -419,7 +422,10 @@ class IDARemoteDisassembler(IDADisassembler):
 
             # TODO: Clean up ida temp files if we fail.
             self._process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=sys.platform != "win32")
+                command,
+                shell=sys.platform != "win32",
+                preexec_fn=os.setpgrp if self._detach else None
+            )
             atexit.register(self._process.kill)
         finally:
             os.chdir(orig_cwd)

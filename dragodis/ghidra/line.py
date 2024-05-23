@@ -179,8 +179,9 @@ class GhidraLine(Line):
             return LineType.code
 
         data_type = self._code_unit.getDataType().getName()
+        data_type_class_name = str(self._code_unit.getDataType().getClass())
 
-        if "struct" in data_type:  # FIXME
+        if "struct" in data_type or "Structure" in data_type_class_name:  # FIXME: Still need proper support for structures.
             return LineType.struct
 
         # If data type is undefined, check if data is unloaded by checking if it has a value.
@@ -193,6 +194,10 @@ class GhidraLine(Line):
         try:
             return self._data_type_map[data_type]
         except KeyError:
+            # Check if a dynamic type.
+            from ghidra.program.model.data import DynamicDataType
+            if isinstance(self._code_unit.getDataType(), DynamicDataType):
+                return LineType.dynamic
             raise RuntimeError(f"Unexpected line type at {hex(self.address)}")
 
     @type.setter
@@ -361,7 +366,7 @@ class GhidraLine(Line):
             # For strings, we are going to undefine the value first so ghidra appropriately
             # resets the code unit.
             self.undefine()
-            self._ghidra._flatapi.setBytes(self._addr_obj, list(new_value))
+            self._ghidra._flatapi.setBytes(self._addr_obj, new_value)
             self.type = type_
             return
 

@@ -282,7 +282,7 @@ class IDAFlatAPI(FlatAPI, IDADisassembler):
             if default is MISSING:
                 raise NotExistError(f"Unable to obtain string bytes at 0x{addr:08x}")
             return default
-        return self._ida_bytes.get_strlit_contents(addr, length, str_type)
+        return ret
 
     def strings(self, min_length=3) -> Iterable[IDAString]:
         sc = self._idautils.Strings()

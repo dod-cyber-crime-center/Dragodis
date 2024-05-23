@@ -25,7 +25,7 @@ A *Memory* object for the underlying data can be obtained using the ``.open()`` 
     b']\xc3\xcc\xcc'
 
     >>> segment.permissions
-    <SegmentPermission.read|execute: 5>
+    <SegmentPermission.execute|read: 5>
 
     >>> with segment.open() as stream:
     ...     stream.seek(4)

@@ -13,10 +13,11 @@ class StackFrame(MutableMapping, metaclass=abc.ABCMeta):
     """Function Stack Frame"""
 
     def __str__(self) -> str:
-        return str(dict(self))
+        return "\n".join(map(str, self))
 
     def __repr__(self):
-        return f"<StackFrame {self}>"
+        vars = ", ".join(map(repr, self))
+        return f"<StackFrame {vars}>"
 
     @abc.abstractmethod
     def __getitem__(self, name_or_offset: Union[str, int]) -> StackVariable:

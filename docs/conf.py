@@ -21,7 +21,7 @@ sys.path.insert(1, os.path.abspath('../dragodis'))
 # -- Project information -----------------------------------------------------
 
 project = 'Dragodis'
-copyright = '2022, DC3'
+copyright = '2024, DC3'
 author = 'DC3'
 
 # The full version, including alpha/beta/rc tags

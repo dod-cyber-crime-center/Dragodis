@@ -276,7 +276,10 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             else:
                 raise ValueError(f"Invalid bit width: {bit_width}")
         except Exception as e:
-            raise RuntimeError(f"Failed to create a string at {hex(addr)} with error: {e}")
+            if default is MISSING:
+                raise RuntimeError(f"Failed to create a string at {hex(addr)} with error: {e}")
+            else:
+                return default
 
     def strings(self, min_length=3) -> Iterable[GhidraString]:
         # NOTE: Not using findStrings() because Ghidra has issues getting the right starting address for unicode strings.
@@ -420,9 +423,8 @@ class GhidraFlatAPI(FlatAPI, GhidraDisassembler):
             if end:
                 if end <= start:
                     raise ValueError(f"End address {hex(end)} is smaller than starting address {hex(start)}")
-                # Ghidra is inclusive so jump to previous address for end.
-                end = self._listing.getCodeUnitBefore(self._to_addr(end)).getAddress()
-                self._flatapi.clearListing(self._to_addr(start), end)
+                # Ghidra is inclusive
+                self._flatapi.clearListing(self._to_addr(start), self._to_addr(end-1))
             else:
                 self._flatapi.clearListing(self._to_addr(start))
             return True

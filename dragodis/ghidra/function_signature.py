@@ -78,7 +78,6 @@ class GhidraFunctionSignature(FunctionSignature):
         return ParameterImpl(
             "",
             data_type,
-            self._function.getEntryPoint(),
             self._ghidra._program,
             SourceType.USER_DEFINED
         )

@@ -17,7 +17,7 @@ def _install_local_deps(session):
             session.install(path)
 
 
-@nox.session(python="3.8")
+@nox.session(python="3.11")
 def test(session):
     """Run pytests"""
     _install_local_deps(session)
@@ -25,7 +25,7 @@ def test(session):
     session.run("pytest")
 
 
-@nox.session(python="3.8")
+@nox.session(python="3.11")
 def build(session):
     """Build source and wheel distribution"""
     session.run("python", "setup.py", "sdist")

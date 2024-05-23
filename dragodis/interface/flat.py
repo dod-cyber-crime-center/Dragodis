@@ -293,7 +293,9 @@ class FlatAPI(metaclass=abc.ABCMeta):
                 func_name = func_name.strip("_")
             if func_name == name:
                 return func
-        raise NotExistError(f"Unable to find function with name: {name}")
+        if default is MISSING:
+            raise NotExistError(f"Unable to find function with name: {name}")
+        return default
 
     @abc.abstractmethod
     def create_function(self, start: int, end: int = None, *, default=MISSING) -> Function:

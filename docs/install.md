@@ -20,13 +20,13 @@ Then follow one or more of the following instructions to setup your favorite dis
    environment than IDA, you can manually install the library in the IDA environment using the `--target` flag.
 
    ```bash
-   py -3.8 -m pip install rpyc --target="%IDA_INSTALL_DIR%\python\3"
+   py -3.11 -m pip install rpyc --target="%IDA_INSTALL_DIR%\python\3"
    ```
 
 4. **WINDOWS**: If you are on Windows, you'll also need to install `pywin32` in the IDA interpreter.
 
    ```bash
-   py -3.8 -m pip install pywin32 --target="%IDA_INSTALL_DIR%\python\3"
+   py -3.11 -m pip install pywin32 --target="%IDA_INSTALL_DIR%\python\3"
    ```
 
 

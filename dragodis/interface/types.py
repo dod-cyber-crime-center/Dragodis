@@ -42,6 +42,7 @@ class LineType(IntEnum):
     tail = auto()
     undefined = auto()
     unloaded = auto()
+    dynamic = auto()
 
     @classmethod
     def match_type(cls, value: Any) -> List["LineType"]:

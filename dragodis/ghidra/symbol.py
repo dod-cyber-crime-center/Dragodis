@@ -77,12 +77,14 @@ class GhidraImport(Import, GhidraSymbol):
         else:
             thunk_function = None
 
+        linkage_address = self._linkage_address
+
         # First pull references from original external symbol.
         from ghidra.program.model.symbol import RefType
         for ref in self._symbol.getReferences():
             if (
                 ref.getReferenceType() != RefType.THUNK
-                and ref.getFromAddress() != self._linkage_address
+                and ref.getFromAddress() != linkage_address
                 and not (thunk_function and ref.getFromAddress().getOffset() in thunk_function)
             ):
                 yield GhidraReference(self._ghidra, ref)

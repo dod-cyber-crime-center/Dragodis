@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.0] - 2024-05-23
+- Dropped support for Python 3.8.
+- Fixed issue with default not being respected in `get_function_by_name()`.
+- Fixed handling of imports of variables/macros.
+
+
 ## [0.8.0] - 2023-11-29
 - Updated Ghidra support to 10.3.2 and 10.4
 - Added automatic activation of virtualenv within IDA process if one is detected.
@@ -135,7 +141,8 @@
 - Initial release
 
 
-[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/dod-cyber-crime-center/dragodis/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.8.0...1.0.0
 [0.8.0]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.2...0.8.0
 [0.7.2]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/dod-cyber-crime-center/dragodis/compare/0.7.0...0.7.1
