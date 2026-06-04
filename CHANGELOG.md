@@ -4,7 +4,7 @@
 ## [Unreleased]
 - In IDA, check if the address is initialized or is in a valid segment to `set_bytes`
 - For Ghidra, if an address is uninitialized when `set_bytes` is called, attempt to initialize the address if `settings.ghidra.initialize_on_write` is `True`
-
+- In IDA >= 9.2, use `get_cc` and `set_cc` functions since `cc` property is not exposed for `_func_type_data` objects
 
 ## [1.2.0] - 2026-05-01
 - Tested and updated for IDA 8.5 and 9.1

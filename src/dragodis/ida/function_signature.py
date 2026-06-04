@@ -78,7 +78,11 @@ class IDAFunctionSignature(FunctionSignature):
 
     @property
     def calling_convention(self) -> str:
-        cc = self._func_type_data.cc & self._ida._ida_typeinf.CM_CC_MASK
+        # Available in versions <=9.1
+        if hasattr(self._func_type_data, "cc"):
+            cc = self._func_type_data.cc & self._ida._ida_typeinf.CM_CC_MASK
+        else:
+            cc = self._func_type_data.get_cc() & self._ida._ida_typeinf.CM_CC_MASK
         try:
             return self._cc_map[cc]
         except KeyError:
@@ -94,8 +98,13 @@ class IDAFunctionSignature(FunctionSignature):
         except KeyError:
             raise ValueError(f"Invalid calling convention name: {name}")
         # Set calling convention part of cm_t flags.
-        cc |= self._func_type_data.cc & (self._ida._ida_typeinf.CM_CC_MASK ^ 0xff)
-        self._func_type_data.cc = cc
+        # Available in versions <=9.1
+        if hasattr(self._func_type_data, "cc"):
+            cc |= self._func_type_data.cc & (self._ida._ida_typeinf.CM_CC_MASK ^ 0xff)
+            self._func_type_data.cc = cc
+        else:
+            cc |= self._func_type_data.get_cc() & (self._ida._ida_typeinf.CM_CC_MASK ^ 0xff)
+            self._func_type_data.set_cc(cc)
         self._apply()
         self._parameters = None
 
